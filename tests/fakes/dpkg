@@ -1,0 +1,3 @@
+#!/bin/bash
+# Fake dpkg for tests: every package is "installed", so no real apt-get runs.
+exit 0

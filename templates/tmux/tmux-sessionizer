@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Pick a project directory with fzf and switch to a tmux session for it
+# (created on first use). Bound to prefix + f in tmux and Ctrl-f in Neovim.
+# Searched roots: $TMUX_SESSIONIZER_ROOTS (space separated), else the usual suspects.
+# Installed by devenv.
+
+if [ $# -eq 1 ]; then
+  selected=$1
+else
+  roots=${TMUX_SESSIONIZER_ROOTS:-"$HOME/dev $HOME/code $HOME/src $HOME/projects $HOME/work $HOME/go/src $HOME/repos"}
+  existing=''
+  for r in $roots; do [ -d "$r" ] && existing="$existing $r"; done
+  [ -n "$existing" ] || existing=$HOME
+  # shellcheck disable=SC2086
+  selected=$( { for r in $existing; do echo "$r"; done; find $existing -mindepth 1 -maxdepth 2 -type d -not -name '.*' 2>/dev/null; } \
+    | sort -u | fzf --reverse --prompt 'project> ' --preview 'ls -1 {}' )
+fi
+[ -n "$selected" ] || exit 0
+
+name=$(basename "$selected" | tr '. :' '___')
+if ! tmux has-session -t="$name" 2>/dev/null; then
+  tmux new-session -ds "$name" -c "$selected"
+fi
+if [ -n "$TMUX" ]; then
+  tmux switch-client -t "$name"
+else
+  tmux attach-session -t "$name"
+fi

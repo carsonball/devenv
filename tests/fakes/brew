@@ -1,0 +1,26 @@
+#!/bin/bash
+# Fake Homebrew for tests: tracks installs in text files next to itself.
+db=$(cd "$(dirname "$0")/.." && pwd)/fakedb
+mkdir -p "$db"; touch "$db/formulae" "$db/casks"
+echo "brew $*" >>"$db/calls"
+cask=0
+args=''
+for a in "$@"; do case "$a" in --cask) cask=1 ;; --formula|-1) ;; *) args="$args $a" ;; esac; done
+set -- $args
+f="$db/formulae"; [ $cask = 1 ] && f="$db/casks"
+case "$1" in
+  shellenv) echo "export PATH=\"$(dirname "$0"):\$PATH\"" ;;
+  --prefix) cd "$(dirname "$0")/.." && pwd ;;
+  list) cat "$f" ;;
+  install) shift
+    for n in "$@"; do
+      n=${n##*/}
+      case " ${FAKE_BREW_FAIL:-} " in *" $n "*) echo "Error: No available formula $n" >&2; exit 1 ;; esac
+    done
+    for n in "$@"; do n=${n##*/}; grep -qx "$n" "$f" || echo "$n" >>"$f"; done ;;
+  uninstall) shift
+    for n in "$@"; do
+      case " ${FAKE_BREW_DEPENDED:-} " in *" $n "*) echo "Error: Refusing to uninstall $n because it is required by x" >&2; exit 1 ;; esac
+      grep -vx "$n" "$f" >"$f.tmp"; mv "$f.tmp" "$f"
+    done ;;
+esac

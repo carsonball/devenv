@@ -1,0 +1,2 @@
+# docker
+alias lzd=lazydocker

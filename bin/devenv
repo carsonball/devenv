@@ -1,0 +1,414 @@
+#!/bin/bash
+# devenv: set up a WezTerm + tmux + LazyVim environment for the languages and
+# tools you name, and keep a manifest of every change so any of it can be undone.
+#
+#   devenv install go docker k8s ts
+#   devenv status
+#   devenv undo docker
+#
+# Runs on the bash 3.2 that ships with macOS; see lib/util.sh for the rules.
+
+DEVENV_VERSION=0.1.0
+
+self=$0
+case "$self" in */*) ;; *) self=$(command -v "$self") ;; esac
+while [ -L "$self" ]; do
+  link=$(readlink "$self")
+  case "$link" in /*) self=$link ;; *) self="$(dirname "$self")/$link" ;; esac
+done
+DEVENV_HOME=$(cd "$(dirname "$self")/.." && pwd)
+export DEVENV_HOME
+
+. "$DEVENV_HOME/lib/util.sh"
+. "$DEVENV_HOME/lib/manifest.sh"
+. "$DEVENV_HOME/lib/files.sh"
+. "$DEVENV_HOME/lib/pkg.sh"
+. "$DEVENV_HOME/lib/modules.sh"
+. "$DEVENV_HOME/lib/hooks.sh"
+. "$DEVENV_HOME/lib/render.sh"
+. "$DEVENV_HOME/lib/undo.sh"
+
+usage() {
+  cat <<EOF
+devenv $DEVENV_VERSION: a terminal dev environment (WezTerm + tmux + LazyVim) you can undo.
+
+Usage:
+  devenv install [what...]   install core tools and configs, plus modules for what you name
+  devenv plan [what...]      show what install would do, change nothing
+  devenv status              what is installed, and every recorded change
+  devenv undo <what...>      undo modules (e.g. docker), or:
+        --id N [N...]        specific changes from \`devenv status\`
+        --run ID | --last    everything one run did
+        --all                everything devenv ever did
+  devenv diff <N|path>       compare a replaced file with your original
+  devenv log                 full history of changes and undos
+  devenv modules             list modules and the words that select them
+  devenv doctor              check the environment is wired up
+  devenv self-update         update devenv itself
+
+"what" can be a module, a language, an extension or a tool:
+  devenv install go docker k8s ts      devenv install .py rust terraform
+
+Options:
+  -y, --yes             don't ask for confirmation
+  -n, --dry-run         show what would happen, change nothing
+  -f, --force           overwrite devenv-written configs even if you edited them (yours are backed up)
+      --no-sync         skip pre-installing Neovim plugins and language servers
+      --include-homebrew  with undo --all: also remove Homebrew if devenv installed it
+
+State lives in $(tilde "$STATE_DIR").
+EOF
+}
+
+# --- install ----------------------------------------------------------------
+
+nvim_bin() {
+  if [ -x "$BREW_PREFIX/bin/nvim" ]; then echo "$BREW_PREFIX/bin/nvim"; else command -v nvim; fi
+}
+
+nvim_sync() {
+  local nvim
+  nvim=$(nvim_bin) || { warn "nvim not found; plugins will install on first launch"; return 0; }
+  info "Installing Neovim plugins, language servers, linters and debuggers"
+  step "this takes a few minutes the first time"
+  track_new_dir nvim "$HOME/.local/share/nvim"
+  track_new_dir nvim "$HOME/.local/state/nvim"
+  track_new_dir nvim "$HOME/.cache/nvim"
+  if is_dry; then step "would run: nvim --headless \"+Lazy! sync\" +qa, then install Mason tools"; return 0; fi
+  run "$nvim" --headless "+Lazy! sync" +qa || warn "plugin sync reported errors; see $RUN_LOG"
+  if run "$nvim" --headless -c "luafile $DEVENV_HOME/lib/mason_install.lua"; then
+    ok "$(grep '^\[devenv\] installed:' "$RUN_LOG" | tail -n 1 | sed 's/^\[devenv\] //')"
+  else
+    grep '^\[devenv\]' "$RUN_LOG" | tail -n 3 | sed 's/^\[devenv\] //' | while IFS= read -r l; do warn "$l"; done
+    warn "open nvim and run :Mason to retry (details in $RUN_LOG)"
+    FAILURES="$FAILURES mason"
+  fi
+}
+
+module_notes() {
+  local m n
+  for m in $1; do
+    n=$(mod_get_plat "$m" notes)
+    [ -n "$n" ] && printf '  %s: %s\n' "$m" "$n"
+  done
+  return 0
+}
+
+cmd_install() {
+  local words='' w m requested='' unknown='' mods new='' active excluded
+  for w in "$@"; do
+    if m=$(resolve_word "$w"); then
+      word_in "$m" "$requested" || requested="$requested $m"
+    else
+      unknown="$unknown $w"
+    fi
+  done
+  if [ -n "$unknown" ]; then
+    err "don't know how to set up:$unknown"
+    log "Available: $(lang_modules | tr '\n' ' ')(see \`devenv modules\` for aliases)"
+    exit 2
+  fi
+
+  active=$(active_modules)
+  excluded=$(set_list excluded | tr '\n' ' ')
+  words=$requested
+  for m in $active; do word_in "$m" "$words" || words="$words $m"; done
+  for m in $CORE_ORDER; do
+    word_in "$m" "$excluded" && ! word_in "$m" "$requested" && continue
+    word_in "$m" "$words" || words="$words $m"
+  done
+  mods=$(order_modules $words)
+  for m in $mods; do word_in "$m" "$active" || new="$new $m"; done
+
+  info "devenv on $PLATFORM_LABEL"
+  if [ -n "$new" ]; then
+    log "  Will set up:"
+    for m in $new; do log "    $(printf '%-11s' "$m") $(mod_get "$m" desc)"; done
+  else
+    log "  Everything requested is already set up; refreshing packages and configs."
+  fi
+  [ -n "$active" ] && log "  Already set up: $active"
+  [ -n "$excluded" ] && log "  Skipping (you undid them): $excluded"
+  log "  Every change is recorded; undo any of it with \`devenv undo\`."
+  if ! is_dry && ! confirm "Proceed?"; then log "Nothing changed."; exit 1; fi
+
+  RUN_ID=$(new_run_id); export RUN_ID
+  FAILURES=''
+  state_init
+  if ! is_dry; then
+    RUN_LOG="$STATE_DIR/runs/$RUN_ID.log"; export RUN_LOG
+    : >"$RUN_LOG"
+    history_add "install: $*"
+  fi
+  for m in $requested; do set_remove excluded "$m"; done
+
+  ensure_homebrew
+  for m in $mods; do
+    # shellcheck disable=SC2046
+    brew_install "$m" $(mod_get_plat "$m" brew)
+    # shellcheck disable=SC2046
+    cask_install "$m" $(mod_get_plat "$m" cask)
+    for w in $(mod_get_plat "$m" winget); do winget_install "$m" "$w"; done
+    if type "hook_$m" >/dev/null 2>&1; then "hook_$m"; fi
+    set_add modules "$m"
+  done
+
+  render_all "$mods"
+  if word_in nvim "$mods" && [ "${NO_SYNC:-0}" != 1 ]; then nvim_sync; fi
+
+  log ""
+  if is_dry; then
+    info "Dry run: nothing was changed."
+    return 0
+  fi
+  local count
+  count=$(records_where 3 "$RUN_ID" | grep -c . )
+  info "Done. $count changes recorded in run $RUN_ID."
+  module_notes "$mods" | while IFS= read -r n; do log "$n"; done
+  if [ -n "$FAILURES" ]; then warn "did not complete:$FAILURES (details in $RUN_LOG)"; fi
+  log "  See them with \`devenv status\`; undo with \`devenv undo --last\` or \`devenv undo <module>\`."
+  if word_in shellrc "$mods"; then log "  Open a new terminal (or WezTerm) to pick up the shell changes."; fi
+}
+
+# --- status / log / diff -----------------------------------------------------
+
+describe_kind() {
+  case "$1" in
+    brew) echo "installed formula" ;; cask) echo "installed app" ;; apt) echo "installed apt package" ;;
+    winget) echo "installed Windows app" ;; homebrew) echo "installed Homebrew" ;;
+    file) echo "created file" ;; replace) echo "replaced (original saved)" ;;
+    dir) echo "created directory" ;; mkdir) echo "created parent dir" ;;
+    link) echo "created symlink" ;; block) echo "added block to" ;; *) echo "$1" ;;
+  esac
+}
+
+cmd_status() {
+  local m line mods
+  info "devenv on $PLATFORM_LABEL"
+  mods=$(active_modules)
+  log "  Modules: ${mods:-none}"
+  [ -n "$(set_list excluded)" ] && log "  Undone core modules: $(set_list excluded | tr '\n' ' ')"
+  if [ ! -s "$MANIFEST" ]; then log "  No recorded changes."; return 0; fi
+  for m in $(cut -f4 "$MANIFEST" | awk '!seen[$0]++'); do
+    log ""
+    log "${C_BOLD}$m${C_RESET}"
+    records_where 4 "$m" | while IFS= read -r line; do
+      local t d
+      t=$(field "$line" 6); d=$(field "$line" 7)
+      t=$(tilde "$t")
+      case "$(field "$line" 5)" in
+        replace) d=" ${C_DIM}(original: $(tilde "$d"))${C_RESET}" ;;
+        link) d=" -> $d" ;;
+        *) d='' ;;
+      esac
+      log "  $(printf '#%-4s %-26s' "$(field "$line" 1)" "$(describe_kind "$(field "$line" 5)")") $t$d"
+    done
+  done
+  log ""
+  log "Undo with: devenv undo <module> | --id N | --last | --all"
+}
+
+cmd_log() { [ -f "$HISTORY" ] && cat "$HISTORY"; }
+
+cmd_diff() {
+  local q=$1 line
+  [ -n "$q" ] || die "usage: devenv diff <N|path>"
+  case "$q" in
+    [0-9]*) line=$(records_where 1 "$q") ;;
+    *) q=$(cd "$(dirname "$q")" 2>/dev/null && pwd)/$(basename "$q")
+       line=$(find_record replace "$q"); [ -n "$line" ] || line=$(find_record file "$q") ;;
+  esac
+  [ -n "$line" ] || die "no recorded change for $1"
+  case "$(field "$line" 5)" in
+    replace) diff -ru "$(field "$line" 7)" "$(field "$line" 6)" ;;
+    file) diff -u /dev/null "$(field "$line" 6)" ;;
+    block) cat "$(field "$line" 6)" | awk -v b="$BLOCK_BEGIN" -v e="$BLOCK_END" '$0==b{p=1} p{print "+" $0} $0==e{p=0}' ;;
+    *) printf '%s\n' "$line" ;;
+  esac
+  return 0
+}
+
+# --- undo -------------------------------------------------------------------
+
+cmd_undo() {
+  local mode=modules ids='' runid='' w m mods='' list keep active
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --id) mode=ids; shift; while [ $# -gt 0 ] && case "$1" in -*) false ;; esac; do ids="$ids ${1#\#}"; shift; done; continue ;;
+      --run) mode=run; runid=$2; shift ;;
+      --last) mode=run; runid=$(cut -f3 "$MANIFEST" 2>/dev/null | tail -n 1) ;;
+      --all) mode=all ;;
+      -*) die "unknown option $1" ;;
+      *) m=$(resolve_word "$1") || die "unknown module '$1'"; mods="$mods $m" ;;
+    esac
+    shift
+  done
+  [ -s "$MANIFEST" ] || { log "Nothing to undo."; return 0; }
+
+  list=$(scratch)
+  active=$(active_modules)
+  keep=$active
+  case "$mode" in
+    all) cp "$MANIFEST" "$list"; keep='' ;;
+    run) [ -n "$runid" ] || die "which run? see \`devenv status\`"
+         records_where 3 "$runid" >"$list" ;;
+    ids) [ -n "$ids" ] || die "usage: devenv undo --id N [N...]"
+         for w in $ids; do records_where 1 "$w"; done >"$list" ;;
+    modules)
+      [ -n "$mods" ] || die "undo what? e.g. \`devenv undo docker\`, \`--last\` or \`--all\` (see \`devenv status\`)"
+      # Undoing a module also undoes the modules that depend on it.
+      local changed=1 r
+      while [ "$changed" = 1 ]; do
+        changed=0
+        for m in $active; do
+          word_in "$m" "$mods" && continue
+          for r in $(mod_get "$m" requires); do
+            if word_in "$r" "$mods"; then mods="$mods $m"; changed=1; break; fi
+          done
+        done
+      done
+      for m in $mods; do records_where 4 "$m"; done >"$list"
+      keep=''
+      for m in $active; do word_in "$m" "$mods" || keep="$keep $m"; done ;;
+  esac
+  # Newest first.
+  sort -t"$TAB" -k1,1n "$list" | awk '!seen[$0]++' | reverse_lines >"$list.sorted"
+  mv "$list.sorted" "$list"
+
+  if [ ! -s "$list" ] && [ "$mode" != modules ]; then log "Nothing matches."; rm -f "$list"; return 0; fi
+  info "This will undo:"
+  [ -n "$mods" ] && log "  modules:$mods"
+  while IFS= read -r w; do
+    log "  #$(field "$w" 1) $(describe_kind "$(field "$w" 5)") $(tilde "$(field "$w" 6)")"
+  done <"$list"
+  if ! is_dry && ! confirm "Proceed?"; then rm -f "$list"; log "Nothing changed."; exit 1; fi
+
+  RUN_ID="undo-$(new_run_id)"; export RUN_ID
+  if ! is_dry; then RUN_LOG="$STATE_DIR/runs/$RUN_ID.log"; export RUN_LOG; : >"$RUN_LOG"; fi
+  history_add "undo: mode=$mode $mods$ids $runid"
+  BREW_READY=1
+  [ -x "$BREW" ] && eval "$("$BREW" shellenv)" && brew_refresh
+
+  local failed=0
+  undo_lines "$list" "$keep" || failed=1
+  rm -f "$list"
+
+  case "$mode" in
+    all)
+      if ! is_dry; then
+        : >"$STATE_DIR/modules"; : >"$STATE_DIR/excluded"
+      fi ;;
+    modules)
+      for m in $mods; do
+        set_remove modules "$m"
+        mod_is_core "$m" && set_add excluded "$m"
+      done
+      # Re-render configs so they no longer reference what was removed.
+      keep=$(order_modules $keep)
+      [ -n "$keep" ] && render_all "$keep" ;;
+  esac
+  if [ "$failed" = 1 ]; then warn "some changes could not be undone and are still listed in \`devenv status\`"; return 1; fi
+  info "Undone."
+}
+
+# --- modules / doctor / self-update -------------------------------------------
+
+cmd_modules() {
+  local m active
+  active=$(active_modules)
+  info "Core (always installed)"
+  for m in $CORE_ORDER; do
+    log "  $(printf '%-11s' "$m") $(mod_get "$m" desc)"
+  done
+  info "Languages and tools"
+  for m in $(lang_modules); do
+    local mark=' '
+    word_in "$m" "$active" && mark='*'
+    log " $mark$(printf '%-11s' "$m") $(mod_get "$m" desc)"
+    log "             ${C_DIM}also: $(mod_get "$m" aliases)${C_RESET}"
+  done
+  log ""
+  log "  * installed"
+}
+
+cmd_doctor() {
+  local c v bad=0
+  info "devenv doctor ($PLATFORM_LABEL)"
+  [ -x "$BREW" ] && eval "$("$BREW" shellenv)"
+  for c in brew git nvim tmux rg fd fzf lazygit node; do
+    if v=$(command -v "$c"); then ok "$c ${C_DIM}$v${C_RESET}"; else warn "$c not found"; bad=1; fi
+  done
+  if has nvim; then
+    v=$(nvim --version | head -n 1)
+    case "$v" in
+      *v0.[0-9].*|*v0.10.*|*v0.11.[01]) warn "$v is older than LazyVim needs (0.11.2+)"; bad=1 ;;
+      *) ok "$v" ;;
+    esac
+  fi
+  if [ -f "$RC_FILE" ] && grep -qF "$BLOCK_BEGIN" "$RC_FILE"; then ok "shell hook in $(tilde "$RC_FILE")"
+  else warn "shell hook missing from $(tilde "$RC_FILE")"; bad=1
+  fi
+  if [ "$IS_WSL" = 1 ]; then
+    local wh; wh=$(windows_home 2>/dev/null)
+    if [ -n "$wh" ] && [ -f "$wh/.config/wezterm/wezterm.lua" ]; then ok "WezTerm config on Windows"; else warn "WezTerm config missing on Windows"; bad=1; fi
+  fi
+  [ "$bad" = 0 ] && info "All good." || info "Run \`devenv install\` to repair."
+}
+
+cmd_self_update() {
+  if [ -d "$DEVENV_HOME/.git" ]; then
+    git -C "$DEVENV_HOME" pull --ff-only
+  elif [ -f "$DEVENV_HOME/.source" ]; then
+    DEVENV_REPO=$(cat "$DEVENV_HOME/.source") bash "$DEVENV_HOME/install.sh" --update
+  else
+    die "don't know where devenv was installed from"
+  fi
+}
+
+# --- main -------------------------------------------------------------------
+
+main() {
+  local cmd=${1:-help} args=''
+  [ $# -gt 0 ] && shift
+  detect_platform
+  set --  "$@"
+  local rest=''
+  ASSUME_YES=0 DRY_RUN=0 FORCE=0 NO_SYNC=0 INCLUDE_HOMEBREW=0
+  local a
+  for a in "$@"; do
+    case "$a" in
+      -y|--yes) ASSUME_YES=1 ;;
+      -n|--dry-run) DRY_RUN=1 ;;
+      -f|--force) FORCE=1 ;;
+      --no-sync) NO_SYNC=1 ;;
+      --include-homebrew) INCLUDE_HOMEBREW=1 ;;
+      -h|--help) usage; exit 0 ;;
+      *) rest="$rest
+$a" ;;
+    esac
+  done
+  export ASSUME_YES DRY_RUN FORCE NO_SYNC INCLUDE_HOMEBREW
+  # Rebuild "$@" from the non-flag args (newline separated; args never contain newlines).
+  local IFS='
+'
+  # shellcheck disable=SC2086
+  set -- $rest
+  unset IFS
+  : "$args"
+  case "$cmd" in
+    install|add) cmd_install "$@" ;;
+    plan) DRY_RUN=1; cmd_install "$@" ;;
+    undo|remove|uninstall) cmd_undo "$@" ;;
+    status|list|ls) cmd_status ;;
+    log|history) cmd_log ;;
+    diff) cmd_diff "$@" ;;
+    modules) cmd_modules ;;
+    doctor) cmd_doctor ;;
+    self-update) cmd_self_update ;;
+    version|--version) echo "devenv $DEVENV_VERSION" ;;
+    help|-h|--help) usage ;;
+    *) err "unknown command '$cmd'"; usage; exit 2 ;;
+  esac
+}
+
+main "$@"

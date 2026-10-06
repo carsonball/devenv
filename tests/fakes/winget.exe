@@ -1,0 +1,11 @@
+#!/bin/bash
+db=${FAKE_WIN_DB:?}
+touch "$db/winget"
+echo "winget $*" >>"$db/calls"
+id=''; prev=''
+for a in "$@"; do [ "$prev" = --id ] && id=$a; prev=$a; done
+case "$1" in
+  list) grep -qx "$id" "$db/winget" && { echo "Name Id"; echo "WezTerm $id"; exit 0; }; echo "No installed package found"; exit 1 ;;
+  install) echo "$id" >>"$db/winget" ;;
+  uninstall) grep -vx "$id" "$db/winget" >"$db/w.tmp"; mv "$db/w.tmp" "$db/winget" ;;
+esac
