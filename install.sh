@@ -1,7 +1,7 @@
 #!/bin/bash
 # Bootstrap devenv on a fresh machine, then run `devenv install` with your args.
 #
-#   curl -fsSL https://raw.githubusercontent.com/OWNER/devenv/main/install.sh | bash -s -- go docker k8s ts
+#   curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash -s -- go docker k8s ts
 #
 # Needs only bash, curl and tar, which macOS and Ubuntu ship with. devenv itself
 # goes to ~/.local/share/devenv and is linked as ~/.local/bin/devenv; it is not
@@ -9,7 +9,7 @@
 #
 # Env: DEVENV_REPO (owner/name on GitHub), DEVENV_REF (branch or tag), DEVENV_DIR.
 
-DEVENV_REPO=${DEVENV_REPO:-OWNER/devenv}
+DEVENV_REPO=${DEVENV_REPO:-carsonball/devenv}
 DEVENV_REF=${DEVENV_REF:-main}
 DEST=${DEVENV_DIR:-$HOME/.local/share/devenv}
 BIN="$HOME/.local/bin"

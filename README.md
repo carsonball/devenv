@@ -15,14 +15,14 @@ devenv undo --all        # put the machine back the way it was
 ## Getting it onto a machine
 
 devenv is plain bash (3.2+, the version macOS ships) and needs nothing but `curl`
-and `tar` to bootstrap. Push this folder to a **public** GitHub repo (it holds no
-secrets, and public means no auth on a fresh work laptop), then replace `OWNER`
-below with your GitHub user.
+and `tar` to bootstrap. It downloads from the public repo
+[carsonball/devenv](https://github.com/carsonball/devenv), so a fresh work laptop
+needs no GitHub login.
 
 **macOS** (one line in Terminal; it asks for your password once, for Homebrew):
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/OWNER/devenv/main/install.sh | DEVENV_REPO=OWNER/devenv bash -s -- go docker k8s ts
+curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash -s -- go docker k8s ts
 ```
 
 This installs the Xcode command-line tools and Homebrew if missing, then WezTerm,
@@ -34,7 +34,7 @@ and everything else runs in WSL (Ubuntu). The bootstrap installs WSL if needed
 which installs WezTerm on Windows with `winget` and points it at WSL.
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/OWNER/devenv/main/bootstrap.ps1))) -Repo OWNER/devenv go docker k8s ts
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1))) go docker k8s ts
 ```
 
 From a local copy, without GitHub: `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source . go docker k8s ts`

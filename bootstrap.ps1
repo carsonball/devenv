@@ -3,7 +3,7 @@
   tmux and Neovim run in WSL (tmux has no native Windows build).
 
   From a PowerShell prompt:
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/OWNER/devenv/main/bootstrap.ps1))) go docker k8s ts
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1))) go docker k8s ts
 
   Or from a local copy (no GitHub needed):
     powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source . go docker k8s ts
@@ -15,7 +15,7 @@
        `devenv undo` can remove them.
 #>
 param(
-  [string]$Repo = $(if ($env:DEVENV_REPO) { $env:DEVENV_REPO } else { 'OWNER/devenv' }),
+  [string]$Repo = $(if ($env:DEVENV_REPO) { $env:DEVENV_REPO } else { 'carsonball/devenv' }),
   [string]$Distro = 'Ubuntu',
   [string]$Source = '',
   [Parameter(ValueFromRemainingArguments = $true)][string[]]$Modules
