@@ -17,7 +17,11 @@ case "$1" in
       n=${n##*/}
       case " ${FAKE_BREW_FAIL:-} " in *" $n "*) echo "Error: No available formula $n" >&2; exit 1 ;; esac
     done
-    for n in "$@"; do n=${n##*/}; grep -qx "$n" "$f" || echo "$n" >>"$f"; done ;;
+    for n in "$@"; do
+      n=${n##*/}
+      [ -n "${FAKE_BREW_SLOW:-}" ] && { sleep "$FAKE_BREW_SLOW"; echo "==> Pouring $n"; mkdir -p "$db/../opt/$n"; }
+      grep -qx "$n" "$f" || echo "$n" >>"$f"
+    done ;;
   uninstall) shift
     for n in "$@"; do
       case " ${FAKE_BREW_DEPENDED:-} " in *" $n "*) echo "Error: Refusing to uninstall $n because it is required by x" >&2; exit 1 ;; esac

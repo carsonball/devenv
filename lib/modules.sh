@@ -10,7 +10,8 @@
 #   cask       macOS apps
 #   winget     Windows apps (installed from WSL)
 #   extras     LazyVim extras to enable
-#   notes / notes_darwin / notes_linux / notes_wsl   shown after install
+#   notes / notes_darwin / notes_linux / notes_wsl / notes_desktoplinux   shown after install
+#   (_linux applies to WSL too; _desktoplinux is Linux outside WSL; same for every key)
 # Optional companions: templates/nvim/modules/<name>.lua (Neovim specs),
 # templates/shell/<name>.sh (shell snippet), hook_<name> in hooks.sh.
 
@@ -25,7 +26,9 @@ mod_is_core() { [ "$(mod_get "$1" core)" = 1 ]; }
 mod_get_plat() {
   local v
   v="$(mod_get "$1" "$2") $(mod_get "$1" "${2}_$OS")"
-  [ "$IS_WSL" = 1 ] && v="$v $(mod_get "$1" "${2}_wsl")"
+  if [ "$IS_WSL" = 1 ]; then v="$v $(mod_get "$1" "${2}_wsl")"
+  elif [ "$OS" = linux ]; then v="$v $(mod_get "$1" "${2}_desktoplinux")"
+  fi
   echo $v
 }
 

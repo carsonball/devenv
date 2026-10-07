@@ -161,7 +161,7 @@ render_shell() {
 # render_all "<modules>": write configs for the core modules in the set.
 render_all() {
   local mods=$1
-  info "Writing configuration"
+  phase "Writing configuration"
   word_in shellrc "$mods" && render_shell "$mods"
   word_in tmux "$mods" && render_tmux
   word_in nvim "$mods" && render_nvim "$mods"

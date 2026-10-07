@@ -222,10 +222,31 @@ t_wsl() {
   check "no colima on linux" sh -c "! grep -qx colima '$T/brew/fakedb/formulae'"
   check "wezterm config on Windows side" grep -q 'wsl_distro = "Ubuntu"' "$T/win/.config/wezterm/wezterm.lua"
   check "bashrc hook" grep -q 'devenv/shell.sh' "$T/home/.bashrc"
+  check "numbered steps" has_out "[1/2] Installing packages"
+  check "no desktop-Linux note on WSL" sh -c "! printf '%s' \"\$0\" | grep -q 'desktop Linux'" "$OUT"
   dev undo --all -y
   check "winget app removed" sh -c "! grep -q . '$T/win/winget'"
   check "windows config removed" [ ! -e "$T/win/.config" ]
   check "linux home restored" [ "$(snapshot)" = "$before" ]
+}
+
+t_progress_line() {
+  CURRENT=progress
+  # The live line drawn on terminals: a bar for "<done> <total> <unit>", text otherwise.
+  OUT=$("$SH" -c '. "$1/lib/util.sh"; progress_line Installing 75 "3 4 packages" 2 80; echo; progress_line Fetching 5 "Pouring node" 0 80; echo; progress_line Sync 3 "12 0 plugins" 0 80' _ "$ROOT" 2>&1)
+  check "bar drawn" has_out "██████████████████░░░░░░ 3/4 packages"
+  check "elapsed shown" has_out "1m15s"
+  check "text note shown" has_out "Fetching  Pouring node  5s"
+  check "count without total" has_out "Sync  12 plugins"
+  OUT=$("$SH" -c '. "$1/lib/util.sh"; RUN_LOG=$2; printf "a\n[devenv] progress 2 9 tools\nb\n" >"$RUN_LOG"; probe_log; printf "  - \$ cmd\nlast line\n  - \$ other\n" >"$RUN_LOG"; probe_last' _ "$ROOT" "$WORK/probe.log" 2>&1)
+  check "probe_log reads progress lines" has_out "2 9 tools"
+  check "probe_last skips command echoes" has_out "last line"
+}
+
+t_desktop_linux_note() {
+  setup desktop linux
+  dev install -y --no-sync
+  check "desktop Linux gets the WezTerm note" has_out "not installed automatically on desktop Linux"
 }
 
 t_word_resolution() {

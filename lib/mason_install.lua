@@ -4,8 +4,20 @@
 -- first interactive launch is ready to go. Exits non-zero if anything failed.
 
 local timeout_ms = tonumber(vim.env.DEVENV_MASON_TIMEOUT or "") or 20 * 60 * 1000
+-- Lines devenv reads back start on a fresh line (other output, like
+-- nvim-treesitter's summary, can end without one) and are flushed right away so
+-- devenv's progress bar sees them while this runs.
 local function say(msg)
-  io.stdout:write("[devenv] " .. msg .. "\n")
+  io.stdout:write("\n[devenv] " .. msg .. "\n")
+  io.stdout:flush()
+end
+local last_progress = ""
+local function progress(done, total, unit)
+  local line = done .. " " .. total .. " " .. unit
+  if line ~= last_progress then
+    say("progress " .. line)
+    last_progress = line
+  end
 end
 
 local ok, lazy = pcall(require, "lazy")
@@ -83,8 +95,27 @@ vim.wait(15000, function()
   return #installing() > 0
 end, 500)
 
+local unique, seen = {}, {}
+for _, name in ipairs(wanted) do
+  if not seen[name] then
+    seen[name] = true
+    unique[#unique + 1] = name
+  end
+end
+wanted = unique
+local function tools_progress()
+  local n = 0
+  for _, name in ipairs(wanted) do
+    if registry.is_installed(name) then
+      n = n + 1
+    end
+  end
+  progress(n, #wanted, "language tools")
+end
+
 local last = ""
 local done = vim.wait(timeout_ms, function()
+  tools_progress()
   local busy = installing()
   local line = table.concat(busy, ", ")
   if line ~= last and line ~= "" then
@@ -100,11 +131,37 @@ local ts_plugin = require("lazy.core.config").plugins["nvim-treesitter"]
 if ts_ok and ts.install and ts_plugin then
   local langs = require("lazy.core.plugin").values(ts_plugin, "opts", false).ensure_installed or {}
   say("installing treesitter parsers: " .. #langs)
-  local ok_wait, res = pcall(function()
-    return ts.install(langs, { summary = true }):wait(timeout_ms)
-  end)
-  if not ok_wait or res == false then
+  local ts_config = require("nvim-treesitter.config")
+  local function parsers_done()
+    local have, n = {}, 0
+    for _, lang in ipairs(ts_config.get_installed("parsers")) do
+      have[lang] = true
+    end
+    for _, lang in ipairs(langs) do
+      if have[lang] then
+        n = n + 1
+      end
+    end
+    return n
+  end
+  local finished, task_err = false, nil
+  local ok_start, task = pcall(ts.install, langs, { summary = true })
+  if ok_start and task then
+    task:await(function(err)
+      finished, task_err = true, err
+    end)
+    vim.wait(timeout_ms, function()
+      progress(parsers_done(), #langs, "parsers")
+      return finished
+    end, 500)
+  end
+  local got = parsers_done()
+  progress(got, #langs, "parsers")
+  if not ok_start or not finished or task_err then
     failed[#failed + 1] = "treesitter parsers"
+  elseif got < #langs then
+    -- Not fatal: a parser that failed to download installs when a matching file opens.
+    say("note: " .. got .. " of " .. #langs .. " treesitter parsers installed; see the log for errors")
   end
 end
 

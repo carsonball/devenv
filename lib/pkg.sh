@@ -24,6 +24,9 @@ too_old() {
   esac
 }
 
+# Formula names without a tap prefix (homebrew/core/foo -> foo).
+brew_short() { local n; for n in "$@"; do printf '%s ' "${n##*/}"; done; }
+
 brew_has()      { case "$BREW_FORMULAE" in *" $1 "*) return 0 ;; esac; return 1; }
 brew_has_cask() { case "$BREW_CASKS" in *" $1 "*) return 0 ;; esac; return 1; }
 
@@ -45,10 +48,11 @@ apt_prereqs() {
     dpkg -s "$p" >/dev/null 2>&1 || missing="$missing $p"
   done
   [ -n "$missing" ] || return 0
-  info "Installing system prerequisites:$missing"
+  step "system prerequisites:$missing"
   ensure_sudo
   # shellcheck disable=SC2086
-  run sudo apt-get update -qq && run sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $missing \
+  prun "Updating apt" '' sudo apt-get update -qq \
+    && prun "Installing system prerequisites" '' sudo env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq $missing \
     || die "apt-get failed; see $RUN_LOG"
   for p in $missing; do
     if is_dry || dpkg -s "$p" >/dev/null 2>&1; then record cli apt "$p"; fi
@@ -64,7 +68,6 @@ ensure_homebrew() {
   if [ ! -x "$BREW" ]; then
     ! is_dry && [ "$OS" = linux ] && [ "$(id -u)" = 0 ] && die "Homebrew refuses to run as root. Run devenv as your normal user."
     apt_prereqs
-    info "Installing Homebrew into $BREW_PREFIX"
     if is_dry; then
       step "would run the official Homebrew installer"
       record cli homebrew "$BREW_PREFIX"
@@ -72,10 +75,14 @@ ensure_homebrew() {
       return 0
     fi
     ensure_sudo
-    local script
-    script=$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh) || die "could not download the Homebrew installer"
-    step "running the official Homebrew installer"
-    NONINTERACTIVE=1 /bin/bash -c "$script" || die "Homebrew install failed"
+    local tmp
+    tmp=$(mktemp -d "${TMPDIR:-/tmp}/devenv-brew.XXXXXX")
+    curl -fsSL -o "$tmp/install.sh" https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh \
+      || die "could not download the Homebrew installer"
+    step "running the official Homebrew installer (into $BREW_PREFIX)"
+    prun "Downloading and installing Homebrew" "probe_size '$BREW_PREFIX'" env NONINTERACTIVE=1 /bin/bash "$tmp/install.sh" \
+      || { rm -rf "$tmp"; die "Homebrew install failed; see $RUN_LOG"; }
+    rm -rf "$tmp"
     [ -x "$BREW" ] || die "Homebrew installed but $BREW is missing"
     record cli homebrew "$BREW_PREFIX"
   else
@@ -107,17 +114,21 @@ brew_install() {
     todo="$todo $name"
   done
   [ -n "$todo" ] || return 0
-  info "Installing with Homebrew:$todo"
+  step "with Homebrew:$todo"
   if is_dry; then
     for name in $todo; do step "would brew install $name"; done
     return 0
   fi
   # shellcheck disable=SC2086
-  if ! run "$BREW" install $todo; then
+  # Several formulae get a bar; a single one just a spinner with brew's latest line.
+  local label="Installing packages" probe
+  probe="probe_present '$BREW_PREFIX/opt' packages $(brew_short $todo)"
+  case "${todo# }" in *" "*) ;; *) label="Installing ${todo# }" probe='' ;; esac
+  if ! prun "$label" "$probe" "$BREW" install $todo; then
     # One bad formula fails the whole batch; retry the rest one at a time.
     brew_refresh
     for name in $todo; do
-      brew_has "${name##*/}" || run "$BREW" install "$name" || warn "brew could not install $name; see $RUN_LOG"
+      brew_has "${name##*/}" || prun "Installing $name" '' "$BREW" install "$name" || warn "brew could not install $name; see $RUN_LOG"
     done
   fi
   brew_refresh
@@ -141,13 +152,13 @@ cask_install() {
     todo="$todo $name"
   done
   [ -n "$todo" ] || return 0
-  info "Installing apps:$todo"
+  step "apps:$todo"
   if is_dry; then
     for name in $todo; do step "would brew install --cask $name"; done
     return 0
   fi
   # shellcheck disable=SC2086
-  run "$BREW" install --cask $todo || warn "brew reported errors; see $RUN_LOG"
+  prun "Installing apps" "probe_present '$BREW_PREFIX/Caskroom' apps $todo" "$BREW" install --cask $todo || warn "brew reported errors; see $RUN_LOG"
   brew_refresh
   for name in $todo; do
     if brew_has_cask "$name"; then record "$module" cask "$name"; ok "$name"
@@ -167,9 +178,9 @@ winget_install() {
     return 0
   fi
   if winget_has "$id"; then step "using your existing $id on Windows"; return 0; fi
-  info "Installing $id on Windows"
+  step "on Windows: $id"
   if is_dry; then step "would winget install $id"; return 0; fi
-  run winget.exe install -e --id "$id" --silent --accept-source-agreements --accept-package-agreements
+  prun "Installing $id on Windows" '' winget.exe install -e --id "$id" --silent --accept-source-agreements --accept-package-agreements
   if winget_has "$id"; then record "$module" winget "$id"; ok "$id"
   else warn "$id did not install (see $RUN_LOG)"; FAILURES="$FAILURES winget:$id"
   fi

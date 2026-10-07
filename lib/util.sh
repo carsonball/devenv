@@ -38,12 +38,122 @@ confirm() {
 # Run a command, or describe it in dry-run mode. Output goes to the run log.
 run() {
   if is_dry; then step "${C_DIM}would run:${C_RESET} $*"; return 0; fi
-  step "${C_DIM}\$ $*${C_RESET}"
+  # On a terminal the command line only goes to the log, to keep the screen calm.
+  if [ "$UI_TTY" = 1 ] && [ -n "${RUN_LOG:-}" ]; then printf '  - $ %s\n' "$*" >>"$RUN_LOG"
+  else step "${C_DIM}\$ $*${C_RESET}"
+  fi
   if [ -n "${RUN_LOG:-}" ]; then
     "$@" >>"$RUN_LOG" 2>&1
   else
     "$@"
   fi
+}
+
+# --- progress display -------------------------------------------------------
+# On a terminal, long steps show one live line (spinner, bar or activity note,
+# elapsed time) while their output goes to the run log. Anywhere else (pipes,
+# CI, DEVENV_PLAIN=1) they print the same plain lines as `run`.
+
+UI_TTY=0
+if [ -t 2 ] && [ "${TERM:-dumb}" != dumb ] && [ -z "${DEVENV_PLAIN:-}" ]; then UI_TTY=1; fi
+PHASE=0 PHASES=0 PRUN_PID=''
+
+# phase <title>: a numbered section header, e.g. "==> [2/5] Installing packages".
+phase() {
+  if [ "$PHASES" -gt 0 ]; then
+    PHASE=$((PHASE + 1))
+    info "${C_DIM}[$PHASE/$PHASES]${C_RESET}${C_BOLD} $*"
+  else
+    info "$*"
+  fi
+}
+
+# Probes print what a progress line shows next to the spinner. A line of the
+# form "<done> <total> <unit>" becomes a bar (total 0: just "<done> <unit>");
+# anything else is shown as text.
+probe_size() { # probe_size <dir>: how much has landed there so far
+  du -sk "$1" 2>/dev/null | awk '{ k = $1; if (k > 1048576) printf "%.1f GB so far\n", k / 1048576; else printf "%d MB so far\n", k / 1024 }'
+}
+probe_present() { # probe_present <dir> <unit> <name...>: how many <dir>/<name> exist
+  local dir=$1 unit=$2 n=0 total=0 x; shift 2
+  for x in "$@"; do total=$((total + 1)); [ -e "$dir/$x" ] && n=$((n + 1)); done
+  echo "$n $total $unit"
+}
+probe_entries() { # probe_entries <dir> <unit>: how many entries <dir> has
+  local n=0 x
+  for x in "$1"/*; do [ -e "$x" ] && n=$((n + 1)); done
+  echo "$n 0 $2"
+}
+probe_log() { # the newest "[devenv] progress <done> <total> <unit>" line, else the last log line
+  local p
+  p=$(tail -c 20000 "$RUN_LOG" 2>/dev/null | tr '\r' '\n' | sed -n 's/^\[devenv\] progress //p' | tail -n 1)
+  if [ -n "$p" ]; then echo "$p"; else probe_last; fi
+}
+probe_last() { # the last non-empty line of output
+  tail -c 4000 "$RUN_LOG" 2>/dev/null | tr '\r' '\n' | grep -v -e '^[[:space:]]*$' -e '^  - \$ ' | tail -n 1
+}
+
+fmt_secs() { if [ "$1" -ge 60 ]; then printf '%dm%02ds' $(($1 / 60)) $(($1 % 60)); else printf '%ds' "$1"; fi; }
+
+progress_line() { # progress_line <label> <secs> <note> <tick> <cols>
+  local label=$1 secs=$2 note=$3 tick=$4 cols=$5 spin d t u bar='' w=24 f i room
+  case $((tick % 10)) in
+    0) spin='⠋' ;; 1) spin='⠙' ;; 2) spin='⠹' ;; 3) spin='⠸' ;; 4) spin='⠼' ;;
+    5) spin='⠴' ;; 6) spin='⠦' ;; 7) spin='⠧' ;; 8) spin='⠇' ;; *) spin='⠏' ;;
+  esac
+  # Keep only printable ASCII from command output so width math stays right.
+  note=$(printf '%s' "$note" | LC_ALL=C tr -cd ' -~' | sed 's/^ *//')
+  # shellcheck disable=SC2086
+  set -f; set -- $note; set +f
+  if [ $# -ge 3 ] && [ "$1" -ge 0 ] 2>/dev/null && [ "$2" -ge 0 ] 2>/dev/null; then
+    d=$1 t=$2; shift 2; u=$*
+    if [ "$t" -gt 0 ]; then
+      [ "$d" -gt "$t" ] && d=$t
+      f=$((d * w / t)); i=0
+      while [ $i -lt $w ]; do if [ $i -lt $f ]; then bar="$bar█"; else bar="$bar░"; fi; i=$((i + 1)); done
+      note="$bar $d/$t $u"
+    else
+      note="$d $u"
+    fi
+  else
+    room=$((cols - ${#label} - 20))
+    [ "$room" -lt 10 ] && note=''
+    [ "${#note}" -gt "$room" ] 2>/dev/null && note="${note:0:$((room - 3))}..."
+  fi
+  printf '\r\033[K  %s%s%s %s  %s  %s%s%s' "$C_BLUE" "$spin" "$C_RESET" "$label" "$note" "$C_DIM" "$(fmt_secs "$secs")" "$C_RESET" >&2
+}
+
+progress_abort() {
+  [ -n "$PRUN_PID" ] && kill "$PRUN_PID" 2>/dev/null
+  printf '\r\033[K\033[?25h' >&2
+  err "interrupted; what finished so far is recorded (see \`devenv status\`)"
+  exit 130
+}
+
+# prun <label> <probe> <command...>: run a long command like `run` does, with a
+# live progress line on a terminal. <probe> is a probe_* call (or '' for the
+# last line of output).
+prun() {
+  local label=$1 probe=${2:-probe_last} pid start=$SECONDS tick=0 note='' rc cols; shift 2
+  if is_dry || [ "$UI_TTY" != 1 ] || [ -z "${RUN_LOG:-}" ]; then run "$@"; return; fi
+  printf '  - $ %s\n' "$*" >>"$RUN_LOG"
+  cols=$(tput cols 2>/dev/null || echo 80)
+  "$@" </dev/null >>"$RUN_LOG" 2>&1 &
+  pid=$!; PRUN_PID=$pid
+  trap progress_abort INT TERM
+  printf '\033[?25l' >&2
+  while kill -0 "$pid" 2>/dev/null; do
+    if [ $((tick % 5)) = 0 ]; then note=$(eval "$probe" 2>/dev/null | head -n 1); fi
+    progress_line "$label" $((SECONDS - start)) "$note" "$tick" "$cols"
+    tick=$((tick + 1))
+    sleep 0.2
+  done
+  wait "$pid"; rc=$?
+  PRUN_PID=''
+  trap - INT TERM
+  printf '\r\033[K\033[?25h' >&2
+  [ "$rc" = 0 ] || step "${C_DIM}$label failed after $(fmt_secs $((SECONDS - start)))${C_RESET}"
+  return "$rc"
 }
 
 # Show paths under $HOME as ~/...

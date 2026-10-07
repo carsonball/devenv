@@ -172,6 +172,11 @@ extras=lang.ruby
 - **Colima, not Docker Desktop, on macOS**: no licence question on a work machine.
 - **WSL on Windows**: tmux needs a Unix; WezTerm stays native for proper
   rendering and clipboard, and the Neovim config routes the clipboard through Windows.
+- **Quiet screen, full log**: installs are numbered steps (`[2/5] Installing packages`).
+  Long commands show one live line with a progress bar where the count is known
+  (packages, language tools, parsers) or a spinner, elapsed time and latest activity
+  where it isn't. Their full output goes to `~/.local/state/devenv/runs/<run>.log`.
+  Without a terminal, or with `DEVENV_PLAIN=1`, you get plain lines instead.
 
 ## Repository layout
 

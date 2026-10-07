@@ -69,17 +69,28 @@ nvim_bin() {
 nvim_sync() {
   local nvim
   nvim=$(nvim_bin) || { warn "nvim not found; plugins will install on first launch"; return 0; }
-  info "Installing Neovim plugins, language servers, linters and debuggers"
-  step "this takes a few minutes the first time"
+  phase "Installing Neovim plugins"
+  step "this and the next step take a few minutes the first time"
   track_new_dir nvim "$HOME/.local/share/nvim"
   track_new_dir nvim "$HOME/.local/state/nvim"
   track_new_dir nvim "$HOME/.cache/nvim"
-  if is_dry; then step "would run: nvim --headless \"+Lazy! sync\" +qa, then install Mason tools"; return 0; fi
-  run "$nvim" --headless "+Lazy! sync" +qa || warn "plugin sync reported errors; see $RUN_LOG"
-  if run "$nvim" --headless -c "luafile $DEVENV_HOME/lib/mason_install.lua"; then
-    ok "$(grep '^\[devenv\] installed:' "$RUN_LOG" | tail -n 1 | sed 's/^\[devenv\] //')"
+  if is_dry; then
+    step "would run: nvim --headless \"+Lazy! sync\" +qa"
+    phase "Installing language servers, linters, debuggers and parsers"
+    step "would install them with Mason and nvim-treesitter"
+    return 0
+  fi
+  if prun "Installing Neovim plugins" "probe_size '$HOME/.local/share/nvim/lazy'" "$nvim" --headless "+Lazy! sync" +qa; then
+    ok "$(probe_entries "$HOME/.local/share/nvim/lazy" plugins | awk '{ print $1, $3 }') ready"
   else
-    grep '^\[devenv\]' "$RUN_LOG" | tail -n 3 | sed 's/^\[devenv\] //' | while IFS= read -r l; do warn "$l"; done
+    warn "plugin sync reported errors; see $RUN_LOG"
+  fi
+  phase "Installing language servers, linters, debuggers and parsers"
+  if prun "Installing language tools" probe_log "$nvim" --headless -c "luafile $DEVENV_HOME/lib/mason_install.lua"; then
+    ok "$(grep '^\[devenv\] installed:' "$RUN_LOG" | tail -n 1 | sed 's/^\[devenv\] //')"
+    grep '^\[devenv\] note: ' "$RUN_LOG" | sed 's/^\[devenv\] note: //' | while IFS= read -r l; do warn "$l"; done
+  else
+    grep '^\[devenv\]' "$RUN_LOG" | grep -v '^\[devenv\] progress' | tail -n 3 | sed 's/^\[devenv\] //' | while IFS= read -r l; do warn "$l"; done
     warn "open nvim and run :Mason to retry (details in $RUN_LOG)"
     FAILURES="$FAILURES mason"
   fi
@@ -142,7 +153,14 @@ cmd_install() {
   fi
   for m in $requested; do set_remove excluded "$m"; done
 
+  # Numbered sections: [Homebrew], packages, configuration, [plugins, tools].
+  local need_brew=0
+  [ -x "$BREW" ] || has brew || need_brew=1
+  PHASES=$((2 + need_brew))
+  word_in nvim "$mods" && [ "${NO_SYNC:-0}" != 1 ] && PHASES=$((PHASES + 2))
+  [ "$need_brew" = 1 ] && phase "Installing Homebrew"
   ensure_homebrew
+  phase "Installing packages"
   for m in $mods; do
     # shellcheck disable=SC2046
     brew_install "$m" $(mod_get_plat "$m" brew)
