@@ -6,7 +6,7 @@ runners for the languages and tools you name. Every package installed and every
 file touched is recorded, and any of it can be undone.
 
 ```sh
-devenv install go docker k8s ts
+devenv install go docker k8s ts claude
 devenv status            # everything devenv changed, grouped by module
 devenv undo docker       # take one module back out
 devenv undo --all        # put the machine back the way it was
@@ -39,11 +39,38 @@ which installs WezTerm on Windows with `winget` and points it at WSL.
 
 From a local copy, without GitHub: `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source . go docker k8s ts`
 
-**Linux**: same one-liner as macOS. WezTerm isn't installed for you on desktop
-Linux (install it from your distro), but its config is written.
+If WSL and Ubuntu are already set up, you can skip the bootstrap and run the
+macOS one-liner inside Ubuntu instead; it installs WezTerm on Windows the same way.
+
+**Linux**: same one-liner as macOS (Debian/Ubuntu get build prerequisites from
+apt; elsewhere install curl, git, gcc, make and file first). WezTerm isn't
+installed for you on desktop Linux (install it from your distro), but its config
+and the Nerd Font are.
 
 After the first run, `devenv` is on your PATH (`~/.local/bin/devenv`), so later
-it's just `devenv install python`.
+it's just `devenv install python`. `devenv self-update` fetches the latest devenv.
+
+## Commands
+
+| Command                       | Does                                                                 |
+|-------------------------------|----------------------------------------------------------------------|
+| `devenv install [what...]`    | install the core modules plus the ones you name (re-running refreshes them) |
+| `devenv plan [what...]`       | show what `install` would do, change nothing (same as `install --dry-run`) |
+| `devenv status`               | installed modules and every recorded change, numbered                |
+| `devenv undo <what...>`       | undo modules; or `--id N...`, `--last`, `--run <id>`, `--all`        |
+| `devenv diff <N\|path>`       | compare a replaced file with your original                           |
+| `devenv log`                  | full history of changes and undos                                    |
+| `devenv modules`              | every module and the words that select it                            |
+| `devenv doctor`               | check that the tools and configs are wired up                        |
+| `devenv self-update`          | update devenv itself                                                 |
+
+Options: `-y` skips the confirmation, `-n`/`--dry-run` changes nothing, `-f`/`--force`
+overwrites devenv-written configs you edited (after backing up your copy),
+`--no-sync` skips pre-installing Neovim plugins and language tools, and
+`--include-homebrew` (with `undo --all`) removes Homebrew too.
+
+Installs run as numbered steps with a live progress line for long ones; the full
+output of every command is in `~/.local/state/devenv/runs/<run>.log`.
 
 ## What you get
 
@@ -54,7 +81,7 @@ Core, always installed:
 | `cli`     | git, ripgrep, fd, fzf, lazygit, zoxide, eza, bat, jq, gh, tree-sitter, node, python        |
 | `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, starship prompt |
 | `tmux`    | `Ctrl-a` prefix, vim-aware pane moves, popups for lazygit and a project picker            |
-| `nvim`    | Neovim + LazyVim with debugging (DAP), testing (neotest), JSON/YAML/TOML/Markdown/git      |
+| `nvim`    | Neovim + LazyVim with debugging (DAP), testing (neotest), JSON/YAML/TOML/Markdown/git, harpoon, surround, inc-rename |
 | `wezterm` | WezTerm + JetBrainsMono Nerd Font (Homebrew cask on macOS, winget on Windows), Tokyo Night, opens straight into tmux |
 
 Languages and tools (name a module or any of its aliases, e.g. `ts`, `.tsx`, `kubernetes`):
@@ -73,6 +100,16 @@ Languages and tools (name a module or any of its aliases, e.g. `ts`, `.tsx`, `ku
 | `bash`       | shellcheck, shfmt                       | bash-language-server, shellcheck, shfmt                         |
 | `sql`        |                                         | vim-dadbod UI + completion, sqlfluff                            |
 
+Optional extras:
+
+| Module   | Installs                                                        | Wiring                                                    |
+|----------|-----------------------------------------------------------------|-----------------------------------------------------------|
+| `claude` | Claude Code CLI (Anthropic's installer, same on macOS/Linux/WSL) | tmux popup on `Ctrl-a C`; Neovim integration through LazyVim's `ai.claudecode` extra (claudecode.nvim): open Claude in a split, send selections, accept or reject its edits as diffs |
+
+Aliases: `claude-code`, `claudecode`. Run `claude` once afterwards to sign in. Claude
+Code keeps itself up to date. devenv never touches your login, settings or
+history (`~/.claude`, `~/.claude.json`), not even on undo.
+
 `devenv modules` lists them all with their aliases. The Neovim side is built on
 [LazyVim extras](https://www.lazyvim.org/extras), so it follows LazyVim's
 upstream defaults. Language servers and tools are pre-installed through Mason
@@ -87,15 +124,26 @@ during `devenv install`, so the first `nvim` launch is ready to use.
 | tmux    | `Ctrl-a f`                   | fuzzy-pick a project dir, jump to its own session      |
 | tmux    | `Ctrl-a g` / `Ctrl-a t`      | lazygit popup / scratch shell popup                    |
 | tmux    | `Alt-1..9`, `Ctrl-a m`       | jump to window, zoom pane                              |
-| WezTerm | `Cmd-t`, `Cmd-1..9`, `Cmd-d` (macOS) | tmux new window, select window, split            |
+| tmux    | `Ctrl-a H/J/K/L`             | resize pane (repeatable)                               |
+| tmux    | `Ctrl-a S` / `Ctrl-a X`      | new named session / kill session                       |
+| tmux    | `Ctrl-a r`                   | reload the tmux config                                 |
+| tmux    | `Ctrl-a C`                   | Claude Code popup in the current directory (`claude` module) |
+| WezTerm | `Cmd-t`, `Cmd-1..9`, `Cmd-d`, `Cmd-Shift-d` (macOS) | tmux new window, select window, split right / down |
+| WezTerm | `Cmd-k` / `Cmd-g` (macOS)    | project picker / lazygit                               |
 | WezTerm | `Ctrl-Shift-t`               | a plain shell tab without tmux                         |
+| WezTerm | `Ctrl-Shift-f`               | toggle full screen                                     |
 | Neovim  | `Space` (wait)               | which-key menu of everything                           |
 | Neovim  | `Space t t` / `Space t r`    | run tests in file / nearest test                       |
 | Neovim  | `Space d b` / `Space d c`    | breakpoint / start or continue debugging               |
 | Neovim  | `Space c f`, `Space c a`     | format, code actions                                   |
 | Neovim  | `Space g g`                  | lazygit                                                |
 | Neovim  | `Ctrl-f`                     | switch project (tmux session picker)                   |
+| Neovim  | `Space a c` / `Space a s`    | toggle Claude / send selection to it (`claude` module) |
+| Neovim  | `Space a a` / `Space a d`    | accept / reject the diff Claude proposed               |
 | shell   | `Ctrl-r`, `Ctrl-t`, `z dir`  | fuzzy history, fuzzy file, jump to a frequent dir      |
+
+In Claude Code, `Ctrl-j` always adds a new line; `Shift-Enter` does too where the
+terminal passes it through (devenv turns on tmux's extended keys for that).
 
 ## Tracing and undoing
 
@@ -124,6 +172,8 @@ Rules it follows:
 - **Your edits win.** If you edit a file devenv wrote, re-running devenv leaves it
   alone (`--force` overwrites it after backing up your copy), and undo saves your
   edited copy to the backups instead of deleting it.
+- **Your Claude Code login stays yours.** `~/.claude` and `~/.claude.json` are
+  never recorded, so no undo removes them.
 - **Configs follow modules.** Undoing `docker` uninstalls its packages, removes its
   LazyVim extra and shell bits, and keeps any package another module still needs.
 
@@ -149,10 +199,14 @@ never writes:
 
 ## Adding a module
 
-Drop a `modules/<name>.conf` (plain `key=value`, see the top of
-`lib/modules.sh`), and optionally `templates/nvim/modules/<name>.lua` (Neovim
-specs), `templates/shell/<name>.sh` (shell snippet) and a `hook_<name>` function
-in `lib/hooks.sh` for anything beyond packages. For example, Ruby:
+Drop a `modules/<name>.conf` (plain `key=value`: `desc`, `aliases`, `requires`,
+`brew`, `cask`, `winget`, `extras`, `notes`, each with optional `_darwin`, `_linux`,
+`_wsl` or `_desktoplinux` variants; see the top of `lib/modules.sh`). Optionally add
+`templates/nvim/modules/<name>.lua` (Neovim specs), `templates/shell/<name>.sh`
+(shell snippet), `templates/tmux/modules/<name>.conf` (tmux bindings) and a
+`hook_<name>` function in `lib/hooks.sh` for anything beyond packages (the
+`claude` module's installer is one). Whatever a hook changes must go through the
+recording helpers in `lib/files.sh` so undo can reverse it. For example, Ruby:
 
 ```ini
 desc=Ruby: ruby-lsp, rubocop, debug adapter
@@ -188,7 +242,7 @@ modules/*.conf        one file per module
 templates/            WezTerm, tmux, Neovim and shell configs
 install.sh            curl-able bootstrap (macOS, Linux, WSL)
 bootstrap.ps1         Windows bootstrap (WSL + WezTerm)
-tests/run.sh          end-to-end tests in a throwaway $HOME with fake brew/winget
+tests/run.sh          end-to-end tests in a throwaway $HOME with fake brew, winget and curl
 ```
 
 Run the tests with `tests/run.sh` (add `-v` for detail). They never touch the real

@@ -106,12 +106,19 @@ render_nvim() {
 }
 
 render_tmux() {
-  local term=screen-256color tmp
+  local mods=$1 term=screen-256color tmp snippets m
   if has infocmp && infocmp tmux-256color >/dev/null 2>&1; then term=tmux-256color; fi
   displace tmux "$HOME/.tmux.conf"
   tmp=$(scratch)
   cp "$TPL/tmux/tmux.conf" "$tmp"
   subst "$tmp" TMUX_TERM "$term"
+  # Module additions (templates/tmux/modules/<module>.conf) go before your section.
+  snippets=$(scratch)
+  for m in $mods; do
+    [ -f "$TPL/tmux/modules/$m.conf" ] && { cat "$TPL/tmux/modules/$m.conf"; echo; }
+  done >"$snippets"
+  subst_line "$tmp" DEVENV_MODULES "$snippets"
+  rm -f "$snippets"
   install_file tmux "$tmp" "$TMUX_DIR/tmux.conf"
   rm -f "$tmp"
   install_file tmux "$TPL/tmux/tmux-sessionizer" "$HOME/.local/bin/tmux-sessionizer" 755
@@ -163,7 +170,7 @@ render_all() {
   local mods=$1
   phase "Writing configuration"
   word_in shellrc "$mods" && render_shell "$mods"
-  word_in tmux "$mods" && render_tmux
+  word_in tmux "$mods" && render_tmux "$mods"
   word_in nvim "$mods" && render_nvim "$mods"
   word_in wezterm "$mods" && render_wezterm
   return 0

@@ -366,6 +366,9 @@ cmd_doctor() {
   if [ -f "$RC_FILE" ] && grep -qF "$BLOCK_BEGIN" "$RC_FILE"; then ok "shell hook in $(tilde "$RC_FILE")"
   else warn "shell hook missing from $(tilde "$RC_FILE")"; bad=1
   fi
+  if set_has modules claude; then
+    if v=$(command -v claude || ls "$HOME/.local/bin/claude" 2>/dev/null); then ok "claude ${C_DIM}$v${C_RESET}"; else warn "claude not found"; bad=1; fi
+  fi
   if [ "$IS_WSL" = 1 ]; then
     local wh; wh=$(windows_home 2>/dev/null)
     if [ -n "$wh" ] && [ -f "$wh/.config/wezterm/wezterm.lua" ]; then ok "WezTerm config on Windows"; else warn "WezTerm config missing on Windows"; bad=1; fi

@@ -18,7 +18,7 @@ setup() { # setup <name> <os: darwin|linux|wsl>
   mkdir -p "$T/home" "$T/brew/bin" "$T/fakes" "$T/win"
   cp -R "$ROOT" "$T/devenv"
   cp "$ROOT/tests/fakes/brew" "$T/brew/bin/brew"
-  cp "$ROOT/tests/fakes/dpkg" "$ROOT/tests/fakes/cmd.exe" "$T/fakes/"
+  cp "$ROOT/tests/fakes/dpkg" "$ROOT/tests/fakes/cmd.exe" "$ROOT/tests/fakes/curl" "$T/fakes/"
   chmod +x "$T/brew/bin/brew" "$T/fakes/"*
   mkdir -p "$T/brew/fakedb"
   case $2 in
@@ -247,6 +247,39 @@ t_desktop_linux_note() {
   setup desktop linux
   dev install -y --no-sync
   check "desktop Linux gets the WezTerm note" has_out "not installed automatically on desktop Linux"
+}
+
+t_claude() {
+  setup claude darwin
+  dev install claude-code -y --no-sync
+  check "claude install succeeds" [ "$RC" = 0 ]
+  check "claude linked" [ -L "$T/home/.local/bin/claude" ]
+  check "claude runs" sh -c "'$T/home/.local/bin/claude' | grep -q 'Claude Code'"
+  check "tmux popup for claude" grep -q 'display-popup .* claude$' "$T/home/.config/tmux/tmux.conf"
+  check "tmux extended keys" grep -q 'extended-keys on' "$T/home/.config/tmux/tmux.conf"
+  check "claudecode extra enabled" grep -q 'extras.ai.claudecode"' "$T/home/.config/nvim/lua/devenv/extras.lua"
+  check "sign-in note" has_out "Run \`claude\` once to sign in"
+  dev install claude -y --no-sync
+  check "re-run keeps existing claude" has_out "using your existing claude"
+  dev undo claude -y
+  check "claude undo succeeds" [ "$RC" = 0 ]
+  check "claude link removed" [ ! -e "$T/home/.local/bin/claude" ]
+  check "claude versions removed" [ ! -e "$T/home/.local/share/claude" ]
+  check "claude login kept" [ -f "$T/home/.claude.json" ]
+  check "claude settings dir kept" [ -d "$T/home/.claude" ]
+  check "tmux popup removed" sh -c "! grep -q 'display-popup .* claude' '$T/home/.config/tmux/tmux.conf'"
+  check "claudecode extra removed" sh -c "! grep -q claudecode '$T/home/.config/nvim/lua/devenv/extras.lua'"
+  check "other modules kept" grep -qx tmux "$T/home/.local/state/devenv/modules"
+}
+
+t_claude_existing() {
+  setup claude_existing wsl
+  mkdir -p "$T/home/.local/bin"; printf '#!/bin/sh\n' >"$T/home/.local/bin/claude"; chmod +x "$T/home/.local/bin/claude"
+  dev install claude -y --no-sync
+  check "existing claude used" has_out "using your existing claude"
+  check "existing claude not recorded" sh -c "! grep -q '/.local/bin/claude' '$T/home/.local/state/devenv/manifest.tsv'"
+  dev undo --all -y
+  check "existing claude survives undo --all" [ -x "$T/home/.local/bin/claude" ]
 }
 
 t_word_resolution() {

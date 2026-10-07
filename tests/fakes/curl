@@ -1,0 +1,19 @@
+#!/bin/bash
+# Fake curl for tests: serves Anthropic's Claude Code installer, refuses everything else.
+out='' url=''
+while [ $# -gt 0 ]; do
+  case "$1" in -o) out=$2; shift ;; -*) ;; *) url=$1 ;; esac
+  shift
+done
+case "$url" in
+  https://claude.ai/install.sh)
+    script='#!/bin/bash
+v="$HOME/.local/share/claude/versions/9.9.9"
+mkdir -p "$v" "$HOME/.local/bin" "$HOME/.claude"
+printf "#!/bin/sh\necho Claude Code 9.9.9\n" >"$v/claude"; chmod +x "$v/claude"
+ln -sf "$v/claude" "$HOME/.local/bin/claude"
+echo "{}" >"$HOME/.claude.json"
+echo "Claude Code successfully installed!"'
+    if [ -n "$out" ]; then printf '%s\n' "$script" >"$out"; else printf '%s\n' "$script"; fi ;;
+  *) echo "curl: (6) fake curl: no network in tests ($url)" >&2; exit 6 ;;
+esac

@@ -29,6 +29,32 @@ hook_docker() {
   done
 }
 
+# Claude Code: Anthropic's native installer, the same on macOS, Linux and WSL
+# (the Homebrew cask is macOS-only). It puts the CLI in ~/.local/share/claude
+# with a ~/.local/bin/claude link and updates itself there; undo removes both.
+# ~/.claude and ~/.claude.json (login, settings, history) are never recorded.
+hook_claude() {
+  local link="$HOME/.local/bin/claude" tmp target
+  if has claude || [ -e "$link" ]; then step "using your existing claude ($(command -v claude || echo "$link"))"; return 0; fi
+  step "Claude Code (Anthropic's installer)"
+  if is_dry; then step "would run https://claude.ai/install.sh"; return 0; fi
+  track_new_dir claude "$HOME/.local/share/claude"
+  track_new_dir claude "${XDG_STATE_HOME:-$HOME/.local/state}/claude"
+  track_new_dir claude "${XDG_CACHE_HOME:-$HOME/.cache}/claude"
+  tmp=$(mktemp -d "${TMPDIR:-/tmp}/devenv-claude.XXXXXX")
+  if run curl -fsSL -o "$tmp/install.sh" https://claude.ai/install.sh \
+    && prun "Installing Claude Code" "probe_size '$HOME/.local/share/claude'" bash "$tmp/install.sh" \
+    && { [ -L "$link" ] || [ -x "$link" ]; }; then
+    if [ -L "$link" ]; then target=$(readlink "$link"); record claude link "$link" "$target"
+    else record claude file "$link" '' "$(sha_of "$link")"
+    fi
+    ok "Claude Code"
+  else
+    warn "could not install Claude Code (see $RUN_LOG)"; FAILURES="$FAILURES claude"
+  fi
+  rm -rf "$tmp"
+}
+
 # Desktop Linux has no font cask: fetch the Nerd Font release into ~/.local/share/fonts.
 # (macOS gets it as a Homebrew cask, Windows through winget; see modules/wezterm.conf.)
 hook_wezterm() {
