@@ -55,7 +55,7 @@ Core, always installed:
 | `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, starship prompt |
 | `tmux`    | `Ctrl-a` prefix, vim-aware pane moves, popups for lazygit and a project picker            |
 | `nvim`    | Neovim + LazyVim with debugging (DAP), testing (neotest), JSON/YAML/TOML/Markdown/git      |
-| `wezterm` | Tokyo Night, JetBrains Mono (bundled, no font install), opens straight into tmux           |
+| `wezterm` | WezTerm + JetBrainsMono Nerd Font (Homebrew cask on macOS, winget on Windows), Tokyo Night, opens straight into tmux |
 
 Languages and tools (name a module or any of its aliases, e.g. `ts`, `.tsx`, `kubernetes`):
 

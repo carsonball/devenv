@@ -72,6 +72,8 @@ t_mac_install_and_full_undo() {
   check "go installed and recorded" sh -c "grep -qx go '$T/brew/fakedb/formulae' && grep -q '	go	brew	go	' '$T/home/.local/state/devenv/manifest.tsv'"
   check "pre-existing git not recorded" sh -c "! grep -q '	brew	git	' '$T/home/.local/state/devenv/manifest.tsv'"
   check "wezterm cask installed" cask_installed wezterm
+  check "nerd font cask installed" cask_installed font-jetbrains-mono-nerd-font
+  check "wezterm uses the nerd font" grep -q '"JetBrainsMono Nerd Font"' "$T/home/.config/wezterm/wezterm.lua"
   check "colima on macOS" installed colima
   check "go extra enabled" grep -q 'extras.lang.go"' "$T/home/.config/nvim/lua/devenv/extras.lua"
   check "typescript spec written" [ -f "$T/home/.config/nvim/lua/devenv/plugins/typescript.lua" ]
@@ -213,6 +215,7 @@ t_wsl() {
   dev install go k8s -y --no-sync
   check "wsl install succeeds" [ "$RC" = 0 ]
   check "wezterm via winget" grep -qx wez.wezterm "$T/win/winget"
+  check "nerd font via winget" grep -qx DEVCOM.JetBrainsMonoNerdFont "$T/win/winget"
   check "no casks on linux" sh -c "! grep -q . '$T/brew/fakedb/casks' 2>/dev/null"
   check "no colima on linux" sh -c "! grep -qx colima '$T/brew/fakedb/formulae'"
   check "wezterm config on Windows side" grep -q 'wsl_distro = "Ubuntu"' "$T/win/.config/wezterm/wezterm.lua"

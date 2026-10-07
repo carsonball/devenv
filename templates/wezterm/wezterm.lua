@@ -6,10 +6,11 @@ local config = wezterm.config_builder()
 
 -- @@DEVENV_SETTINGS@@
 
--- Look: same Tokyo Night palette as tmux and Neovim. JetBrains Mono and the
--- Nerd Font symbols ship inside WezTerm, so no font install is needed.
+-- Look: same Tokyo Night palette as tmux and Neovim. devenv installs
+-- JetBrainsMono Nerd Font; WezTerm's bundled JetBrains Mono and Nerd Font
+-- symbols are the fallback if it is missing.
 config.color_scheme = "Tokyo Night"
-config.font = wezterm.font_with_fallback({ "JetBrains Mono", "Symbols Nerd Font Mono" })
+config.font = wezterm.font_with_fallback({ "JetBrainsMono Nerd Font", "JetBrains Mono", "Symbols Nerd Font Mono" })
 config.font_size = devenv.font_size
 config.line_height = 1.1
 config.window_padding = { left = 6, right = 6, top = 4, bottom = 2 }
