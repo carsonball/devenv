@@ -247,3 +247,7 @@ tests/run.sh          end-to-end tests in a throwaway $HOME with fake brew, wing
 
 Run the tests with `tests/run.sh` (add `-v` for detail). They never touch the real
 machine.
+
+## License
+
+[MIT](LICENSE). devenv installs software and changes files on your machine; it comes with no warranty, so read what `devenv plan` shows before you run it.
