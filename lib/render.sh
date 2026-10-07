@@ -31,7 +31,14 @@ subst() {
 # Write a file only the first time (user-owned afterwards).
 install_once() {
   local module=$1 src=$2 dest=$3
-  if [ -n "$(find_record file "$dest")" ] || [ -e "$dest" ]; then return 0; fi
+  if [ -n "$(find_record file "$dest")" ]; then return 0; fi
+  if [ -e "$dest" ]; then
+    # In a dry run, files inside a directory that would be moved aside count as new.
+    case "${DRY_ADOPTED:-//}" in
+      //) return 0 ;;
+      *) case "$dest" in "$DRY_ADOPTED"/*) ;; *) return 0 ;; esac ;;
+    esac
+  fi
   install_file "$module" "$src" "$dest"
 }
 
@@ -41,7 +48,7 @@ displace() {
   local module=$1 path=$2 b
   [ -e "$path" ] || [ -L "$path" ] || return 0
   [ -n "$(find_record replace "$path")" ] && return 0
-  if is_dry; then step "would move $path aside (it would override devenv's config)"; return 0; fi
+  if is_dry; then step "would move $(tilde "$path") aside (it belongs to the replaced config)"; return 0; fi
   b=$(stash "$path")
   record "$module" replace "$path" "$b"
   warn "moved $(tilde "$path") to $(tilde "$b") (it would override devenv's config)"

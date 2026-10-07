@@ -14,6 +14,16 @@ brew_refresh() {
   fi
 }
 
+# Minimum versions for tools other things depend on (Mason's language servers need node 20+).
+too_old() {
+  local major
+  case "$1" in
+    node) major=$(node --version 2>/dev/null | sed 's/^v//; s/\..*//')
+          [ -n "$major" ] && [ "$major" -lt 20 ] 2>/dev/null ;;
+    *) return 1 ;;
+  esac
+}
+
 brew_has()      { case "$BREW_FORMULAE" in *" $1 "*) return 0 ;; esac; return 1; }
 brew_has_cask() { case "$BREW_CASKS" in *" $1 "*) return 0 ;; esac; return 1; }
 
@@ -87,8 +97,12 @@ brew_install() {
     case "$spec" in *:*) cmd=${spec#*:} ;; esac
     if brew_has "${name##*/}"; then continue; fi
     if [ -n "$cmd" ] && found=$(command -v "$cmd" 2>/dev/null); then
-      step "using your existing $cmd ($found)"
-      continue
+      if too_old "$cmd"; then
+        step "your $cmd ($found, $("$cmd" --version 2>/dev/null | head -n 1)) is too old; adding Homebrew's"
+      else
+        step "using your existing $cmd ($found)"
+        continue
+      fi
     fi
     todo="$todo $name"
   done

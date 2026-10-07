@@ -203,6 +203,8 @@ t_dry_run_changes_nothing() {
   check "plan succeeds" [ "$RC" = 0 ]
   check "plan lists packages" has_out "would brew install go"
   check "plan mentions backup" has_out "would back up existing"
+  check "plan lists files inside a replaced dir as new" has_out "would create ~/.config/nvim/init.lua"
+  check "plan lists user files too" has_out "would create ~/.config/nvim/lua/config/options.lua"
   check "plan changes nothing" [ "$(snapshot)" = "$before" ]
   check "no state written" [ ! -e "$T/home/.local/state/devenv" ]
   check "no brew calls that install" sh -c "! grep -q 'install' '$T/brew/fakedb/calls' 2>/dev/null"

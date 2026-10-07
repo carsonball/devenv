@@ -41,7 +41,7 @@ adopt_dir() {
   local module=$1 dir=$2 b
   if [ -n "$(find_record dir "$dir")" ]; then return 0; fi
   if [ -e "$dir" ] || [ -L "$dir" ]; then
-    if is_dry; then step "would back up existing $dir and replace it"; return 0; fi
+    if is_dry; then step "would back up existing $(tilde "$dir") and replace it"; DRY_ADOPTED="$dir"; return 0; fi
     b=$(stash "$dir")
     record "$module" replace "$dir" "$b"
     warn "moved your existing $(tilde "$dir") to $(tilde "$b")"
@@ -70,6 +70,10 @@ track_new_dir() {
 install_file() {
   local module=$1 src=$2 dest=$3 mode=${4:-} rec kind cur sha b
   sha=$(sha_of "$src")
+  # Dry run inside a directory that would have been moved aside: the file is new.
+  if is_dry && [ -n "${DRY_ADOPTED:-}" ]; then
+    case "$dest" in "$DRY_ADOPTED"/*) step "would create $(tilde "$dest")"; return 0 ;; esac
+  fi
   rec=$(find_record file "$dest")
   [ -n "$rec" ] || rec=$(find_record replace "$dest")
 
@@ -87,7 +91,7 @@ install_file() {
       history_add "backup of edited $dest -> $b"
       warn "your edited $dest was saved to $b"
     fi
-    if is_dry; then step "would update $dest"; return 0; fi
+    if is_dry; then step "would update $(tilde "$dest")"; return 0; fi
     ensure_dir "$module" "$(dirname "$dest")"
     cp "$src" "$dest"
     [ -n "$mode" ] && chmod "$mode" "$dest"
@@ -98,14 +102,14 @@ install_file() {
   fi
 
   if [ -e "$dest" ] || [ -L "$dest" ]; then
-    if is_dry; then step "would back up existing $dest and replace it"; return 0; fi
+    if is_dry; then step "would back up existing $(tilde "$dest") and replace it"; return 0; fi
     b=$(stash "$dest")
     cp "$src" "$dest"
     [ -n "$mode" ] && chmod "$mode" "$dest"
     record "$module" replace "$dest" "$b" "$sha"
     ok "replaced $(tilde "$dest") (original saved to $(tilde "$b"))"
   else
-    if is_dry; then step "would create $dest"; return 0; fi
+    if is_dry; then step "would create $(tilde "$dest")"; return 0; fi
     ensure_dir "$module" "$(dirname "$dest")"
     cp "$src" "$dest"
     [ -n "$mode" ] && chmod "$mode" "$dest"
