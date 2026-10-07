@@ -21,6 +21,14 @@ undo_record() {
     cask)
       run "$BREW" uninstall --cask "$target" || { warn "could not uninstall $target"; return 1; } ;;
     apt)
+      # apt-get remove -y also removes anything that depends on the package
+      # (things you installed after devenv). Only remove it if nothing else goes.
+      local others
+      others=$(apt-get -s remove "$target" 2>/dev/null | awk '$1 == "Remv" { print $2 }' | grep -vx -- "$target")
+      if [ -n "$others" ]; then
+        warn "kept $target: removing it would also remove $(echo $others)"
+        return 1
+      fi
       ensure_sudo
       run sudo apt-get remove -y -qq "$target" || { warn "could not remove $target"; return 1; } ;;
     winget)
