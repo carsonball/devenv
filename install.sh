@@ -29,7 +29,8 @@ main() {
     */install.sh|install.sh) here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd) ;;
   esac
 
-  if [ -n "$here" ] && [ -x "$here/bin/devenv" ] && [ "$update_only" = 0 ]; then
+  if [ -n "$here" ] && [ -f "$here/bin/devenv" ] && [ "$update_only" = 0 ]; then
+    chmod +x "$here/bin/devenv" 2>/dev/null
     src=$here
     say "Using devenv from $src"
   else
@@ -40,7 +41,9 @@ main() {
       || die "could not download https://github.com/$DEVENV_REPO (is the repo public?)"
     mkdir "$tmp/x" && tar -xzf "$tmp/devenv.tgz" -C "$tmp/x" || die "could not unpack the download"
     unpacked=$(find "$tmp/x" -mindepth 1 -maxdepth 1 -type d | head -n 1)
-    [ -x "$unpacked/bin/devenv" ] || die "download does not look like devenv"
+    [ -f "$unpacked/bin/devenv" ] || die "download does not look like devenv"
+    # Don't depend on the archive keeping file modes.
+    chmod +x "$unpacked/bin/devenv" "$unpacked/templates/tmux/tmux-sessionizer" 2>/dev/null
     mkdir -p "$(dirname "$DEST")"
     rm -rf "$DEST.old"
     if [ -e "$DEST" ]; then mv "$DEST" "$DEST.old" || die "could not move the old $DEST aside"; fi

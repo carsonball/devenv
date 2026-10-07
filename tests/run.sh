@@ -245,6 +245,17 @@ t_diff_and_log() {
   check "log has entries" has_out "do #1 "
 }
 
+t_repo_file_modes() {
+  CURRENT=modes
+  # Executables must be committed as such: the install tarball comes from git.
+  if git -C "$ROOT" rev-parse >/dev/null 2>&1; then
+    local f
+    for f in bin/devenv install.sh templates/tmux/tmux-sessionizer; do
+      check "$f committed executable" sh -c "git -C '$ROOT' ls-files -s '$f' | grep -q '^100755'"
+    done
+  fi
+}
+
 for t in $(declare -F | awk '{print $3}' | grep '^t_'); do
   [ "$VERBOSE" = 1 ] && echo "== $t"
   $t
