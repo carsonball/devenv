@@ -1,0 +1,14 @@
+#!/bin/bash
+# Fake Claude Code for tests: plugins and marketplaces are lines in text files.
+db="$HOME/.claude/fake"; mkdir -p "$db"; touch "$db/plugins" "$db/markets"
+echo "claude $*" >>"$HOME/.fake-claude-calls"
+drop() { grep -vx "$2" "$db/$1" >"$db/$1.tmp"; mv "$db/$1.tmp" "$db/$1"; }
+case "$1 $2 $3" in
+  "plugin list "*) cat "$db/plugins" ;;
+  "plugin install "*) echo "$3" >>"$db/plugins" ;;
+  "plugin uninstall "*) drop plugins "$3" ;;
+  "plugin marketplace add") echo "${4##*/}" >>"$db/markets" ;;
+  "plugin marketplace list") cat "$db/markets" ;;
+  "plugin marketplace remove") drop markets "$4" ;;
+  *) echo "Claude Code 9.9.9" ;;
+esac

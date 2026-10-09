@@ -19,7 +19,8 @@ setup() { # setup <name> <os: darwin|linux|wsl>
   cp -R "$ROOT" "$T/devenv"
   cp "$ROOT/tests/fakes/brew" "$T/brew/bin/brew"
   cp "$ROOT/tests/fakes/dpkg" "$ROOT/tests/fakes/cmd.exe" "$ROOT/tests/fakes/curl" "$T/fakes/"
-  chmod +x "$T/brew/bin/brew" "$T/fakes/"*
+  cp "$ROOT/tests/fakes/claude" "$T/fakes/.claude-fake"   # what the fake Claude installer installs
+  chmod +x "$T/brew/bin/brew" "$T/fakes/"* "$T/fakes/.claude-fake"
   mkdir -p "$T/brew/fakedb"
   case $2 in
     darwin) ENVV="DEVENV_OS=darwin DEVENV_ARCH=arm64 SHELL=/bin/zsh DEVENV_WSL=0" ;;
@@ -284,6 +285,70 @@ t_claude_existing() {
   check "existing claude not recorded" sh -c "! grep -q '/.local/bin/claude' '$T/home/.local/state/devenv/manifest.tsv'"
   dev undo --all -y
   check "existing claude survives undo --all" [ -x "$T/home/.local/bin/claude" ]
+}
+
+t_claude_addons() {
+  setup addons darwin
+  local before; before=$(snapshot)
+  dev install caveman ponytail lavish no-mistakes -y --no-sync
+  check "add-ons install succeeds" [ "$RC" = 0 ]
+  check "claude installed first" sh -c "awk -F'\t' '\$4 == \"claude\" { c = NR } \$5 == \"plugin\" && !p { p = NR } END { exit !(c && p && c < p) }' '$T/home/.local/state/devenv/manifest.tsv'"
+  check "caveman plugin installed" grep -qx caveman@caveman "$T/home/.claude/fake/plugins"
+  check "ponytail plugin installed" grep -qx ponytail@ponytail "$T/home/.claude/fake/plugins"
+  check "marketplaces added" sh -c "grep -qx caveman '$T/home/.claude/fake/markets' && grep -qx ponytail '$T/home/.claude/fake/markets'"
+  check "lavish skill written" grep -q 'name: lavish' "$T/home/.claude/skills/lavish/SKILL.md"
+  check "no-mistakes linked" [ -L "$T/home/.local/bin/no-mistakes" ]
+  check "no-mistakes installed with telemetry off" grep -qx telemetry=0 "$T/home/.fake-nm-env"
+  check "telemetry off in the shell" grep -q 'NO_MISTAKES_TELEMETRY=0' "$T/home/.config/devenv/shell.sh"
+  check "no-mistakes init note" has_out "no-mistakes init"
+  local n; n=$(records)
+  dev install caveman -y --no-sync
+  check "re-run adds nothing" [ "$(records)" = "$n" ]
+  dev status
+  check "status shows plugins" has_out "installed Claude plugin"
+  dev undo caveman -y
+  check "caveman undo succeeds" [ "$RC" = 0 ]
+  check "caveman plugin removed" sh -c "! grep -q caveman '$T/home/.claude/fake/plugins'"
+  check "caveman marketplace removed" sh -c "! grep -q caveman '$T/home/.claude/fake/markets'"
+  check "ponytail kept" grep -qx ponytail@ponytail "$T/home/.claude/fake/plugins"
+  check "claude kept" [ -L "$T/home/.local/bin/claude" ]
+  dev undo claude -y
+  check "undoing claude takes its add-ons" sh -c "! grep -q . '$T/home/.claude/fake/plugins'"
+  check "plugins removed before claude" sh -c "grep -q 'plugin uninstall ponytail@ponytail' '$T/home/.fake-claude-calls'"
+  check "lavish skill removed" [ ! -e "$T/home/.claude/skills" ]
+  check "no-mistakes daemon removed" grep -q 'no-mistakes daemon uninstall' "$T/home/.fake-nm-calls"
+  check "no-mistakes removed" sh -c "[ ! -e '$T/home/.no-mistakes' ] && [ ! -e '$T/home/.local/bin/no-mistakes' ]"
+  check "add-on modules inactive" sh -c "! grep -qE 'ponytail|lavish|nomistakes' '$T/home/.local/state/devenv/modules'"
+  dev undo --all -y
+  rm -rf "$T/home/.claude" "$T/home/.claude.json" "$T/home/.fake-claude-calls" "$T/home/.fake-nm-calls" "$T/home/.fake-nm-env"
+  check "home restored after undo --all" [ "$(snapshot)" = "$before" ]
+  [ "$(snapshot)" = "$before" ] || diff <(echo "$before") <(snapshot) | sed "s/^/       /"
+}
+
+t_nomistakes_linux_service() {
+  setup nmlinux linux
+  dev install nm -y --no-sync
+  check "no-mistakes install on Linux" [ "$RC" = 0 ]
+  check "systemd unit present" [ -f "$T/home/.config/systemd/user/no-mistakes-daemon-abc123.service" ]
+  dev undo nomistakes -y
+  check "no-mistakes undo on Linux" [ "$RC" = 0 ]
+  check "systemd unit removed" [ ! -e "$T/home/.config/systemd/user/no-mistakes-daemon-abc123.service" ]
+  check "empty systemd dirs cleaned up" [ ! -e "$T/home/.config/systemd" ]
+  check "daemon stopped" grep -q 'no-mistakes daemon stop' "$T/home/.fake-nm-calls"
+}
+
+t_existing_plugin_kept() {
+  setup existing_plugin darwin
+  mkdir -p "$T/home/.claude/fake" "$T/home/.claude/skills/lavish"
+  echo ponytail@ponytail >"$T/home/.claude/fake/plugins"; echo ponytail >"$T/home/.claude/fake/markets"
+  echo mine >"$T/home/.claude/skills/lavish/SKILL.md"
+  cp "$ROOT/tests/fakes/claude" "$T/fakes/"; chmod +x "$T/fakes/claude"
+  dev install ponytail lavish -y --no-sync
+  check "existing plugin used" has_out "using your existing ponytail@ponytail plugin"
+  check "existing skill used" has_out "using your existing lavish skill"
+  dev undo --all -y
+  check "existing plugin survives undo" grep -qx ponytail@ponytail "$T/home/.claude/fake/plugins"
+  check "existing skill survives undo" grep -qx mine "$T/home/.claude/skills/lavish/SKILL.md"
 }
 
 t_word_resolution() {

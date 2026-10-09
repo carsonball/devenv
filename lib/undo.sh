@@ -11,7 +11,7 @@ safe_path() {
 # undo_record <manifest line>. Returns non-zero (and keeps the record) when the
 # change could not be reversed, so a later `devenv undo` can retry it.
 undo_record() {
-  local line=$1 seq module kind target data sha cur b
+  local line=$1 seq module kind target data sha cur b cl
   seq=$(field "$line" 1); module=$(field "$line" 4); kind=$(field "$line" 5)
   target=$(field "$line" 6); data=$(field "$line" 7); sha=$(field "$line" 8)
   if is_dry; then step "would undo #$seq $kind $target"; return 0; fi
@@ -72,7 +72,16 @@ undo_record() {
       safe_path "$target" || { warn "refusing to delete $target"; return 1; }
       rm -rf "$target" ;;
     mkdir)
-      rmdir "$target" 2>/dev/null || true ;;
+      # Still holding another module's files: hand the directory over to it.
+      if ! rmdir "$target" 2>/dev/null && [ -d "$target" ]; then
+        local owner
+        owner=$(awk -F'\t' -v d="$target/" -v s="$seq" '$1 != s && index($6, d) == 1 { print $4; exit }' "$MANIFEST")
+        if [ -n "$owner" ]; then
+          record_set "$seq" 4 "$owner"
+          history_add "keep $target: now owned by $owner"
+          return 0
+        fi
+      fi ;;
     link)
       [ -L "$target" ] && rm -f "$target" ;;
     block)
@@ -88,6 +97,22 @@ undo_record() {
         rm -f "$tmp"
         if [ "$data" = created ] && ! grep -q '[^[:space:]]' "$target"; then rm -f "$target"; fi
       fi ;;
+    plugin)
+      cl=$(claude_bin)
+      if [ -n "$cl" ]; then
+        run "$cl" plugin uninstall "$target" || { warn "could not uninstall the Claude Code plugin $target"; return 1; }
+      else
+        warn "claude not found; left the plugin $target in ~/.claude"
+      fi ;;
+    marketplace)
+      cl=$(claude_bin)
+      if [ -n "$cl" ]; then
+        run "$cl" plugin marketplace remove "$target" || { warn "could not remove the Claude Code marketplace $target"; return 1; }
+      else
+        warn "claude not found; left the marketplace $target in ~/.claude"
+      fi ;;
+    daemon)
+      daemon_remove "$target" || { warn "could not remove the $target background service"; return 1; } ;;
     *)
       warn "unknown record kind '$kind' (#$seq)"; return 1 ;;
   esac
