@@ -1,5 +1,6 @@
 #!/bin/bash
-# Fake curl for tests: serves Anthropic's Claude Code installer, refuses everything else.
+# Fake curl for tests: serves the Claude Code and no-mistakes installers, refuses everything else.
+fakes=$(cd "$(dirname "$0")" && pwd)
 out='' url=''
 while [ $# -gt 0 ]; do
   case "$1" in -o) out=$2; shift ;; -*) ;; *) url=$1 ;; esac
@@ -10,10 +11,23 @@ case "$url" in
     script='#!/bin/bash
 v="$HOME/.local/share/claude/versions/9.9.9"
 mkdir -p "$v" "$HOME/.local/bin" "$HOME/.claude"
-printf "#!/bin/sh\necho Claude Code 9.9.9\n" >"$v/claude"; chmod +x "$v/claude"
+cp "'"$fakes"'/.claude-fake" "$v/claude"; chmod +x "$v/claude"
 ln -sf "$v/claude" "$HOME/.local/bin/claude"
 echo "{}" >"$HOME/.claude.json"
-echo "Claude Code successfully installed!"'
-    if [ -n "$out" ]; then printf '%s\n' "$script" >"$out"; else printf '%s\n' "$script"; fi ;;
+echo "Claude Code successfully installed!"' ;;
+  https://raw.githubusercontent.com/kunchenguid/no-mistakes/main/docs/install.sh)
+    script='#!/bin/sh
+set -e
+mkdir -p "$NO_MISTAKES_INSTALL_DIR" "$NO_MISTAKES_LINK_DIR"
+printf "#!/bin/sh\necho \"no-mistakes \$*\" >>\"\$HOME/.fake-nm-calls\"\n" >"$NO_MISTAKES_INSTALL_DIR/no-mistakes"
+chmod 755 "$NO_MISTAKES_INSTALL_DIR/no-mistakes"
+ln -s "$NO_MISTAKES_INSTALL_DIR/no-mistakes" "$NO_MISTAKES_LINK_DIR/no-mistakes"
+echo "telemetry=$NO_MISTAKES_TELEMETRY" >"$HOME/.fake-nm-env"
+if [ "${DEVENV_OS:-}" = linux ]; then
+  mkdir -p "$HOME/.config/systemd/user"
+  echo "[Service]" >"$HOME/.config/systemd/user/no-mistakes-daemon-abc123.service"
+fi
+echo "Installed no-mistakes"' ;;
   *) echo "curl: (6) fake curl: no network in tests ($url)" >&2; exit 6 ;;
 esac
+if [ -n "$out" ]; then printf '%s\n' "$script" >"$out"; else printf '%s\n' "$script"; fi

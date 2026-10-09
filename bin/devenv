@@ -201,7 +201,9 @@ describe_kind() {
     winget) echo "installed Windows app" ;; homebrew) echo "installed Homebrew" ;;
     file) echo "created file" ;; replace) echo "replaced (original saved)" ;;
     dir) echo "created directory" ;; mkdir) echo "created parent dir" ;;
-    link) echo "created symlink" ;; block) echo "added block to" ;; *) echo "$1" ;;
+    link) echo "created symlink" ;; block) echo "added block to" ;;
+    plugin) echo "installed Claude plugin" ;; marketplace) echo "added Claude marketplace" ;;
+    daemon) echo "set up background service" ;; *) echo "$1" ;;
   esac
 }
 

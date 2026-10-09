@@ -24,6 +24,9 @@
 #   mkdir <path>            parent directory we created    undo: delete it if empty
 #   link <path> <target>    symlink we created             undo: delete it
 #   block <path> <marker>   marked block added to a file   undo: remove the block
+#   plugin <name@market>    Claude Code plugin we installed  undo: claude plugin uninstall
+#   marketplace <name>      Claude Code plugin marketplace   undo: claude plugin marketplace remove
+#   daemon <name>           background service a tool set up undo: daemon_remove in hooks.sh
 
 STATE_DIR=${DEVENV_STATE_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/devenv}
 MANIFEST="$STATE_DIR/manifest.tsv"

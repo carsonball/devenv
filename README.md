@@ -121,6 +121,23 @@ Aliases: `claude-code`, `claudecode`. Run `claude` once afterwards to sign in. C
 Code keeps itself up to date. devenv never touches your login, settings or
 history (`~/.claude`, `~/.claude.json`), not even on undo.
 
+Add-ons for Claude Code (each brings in `claude`):
+
+| Module       | What                                                                 | How it's installed, and undone |
+|--------------|----------------------------------------------------------------------|--------------------------------|
+| `caveman`    | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review` | Claude Code plugin from its own marketplace (`claude plugin install caveman@caveman`); the skill only, not the token proxy |
+| `ponytail`   | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit` | Claude Code plugin (`ponytail@ponytail`) |
+| `lavish`     | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`) | Skill file in `~/.claude/skills/lavish` (a copy ships in `templates/claude/skills`); the CLI runs through `npx` on first use |
+| `nomistakes` | [no-mistakes](https://github.com/kunchenguid/no-mistakes): `git push no-mistakes` runs an AI review, tests and lint in a worktree, then opens the PR | The project's installer: binary in `~/.no-mistakes`, link in `~/.local/bin`, background daemon (launchd or a systemd user service). Telemetry off |
+
+Aliases: `cave`, `lavish-axi`, `no-mistakes`, `nm`. Plugins load in the next
+`claude` session. Undo goes through Claude Code's own `claude plugin uninstall`
+and `claude plugin marketplace remove`, and stops the no-mistakes daemon before
+removing it. A plugin, skill or no-mistakes you already had is used as is and
+never removed. no-mistakes is per repo: `no-mistakes init` adds a `no-mistakes`
+remote and a `/no-mistakes` skill that devenv doesn't track (`no-mistakes eject`
+takes a repo back out).
+
 `devenv modules` lists them all with their aliases. The Neovim side is built on
 [LazyVim extras](https://www.lazyvim.org/extras), so it follows LazyVim's
 upstream defaults. Language servers and tools are pre-installed through Mason
@@ -193,7 +210,8 @@ Rules it follows:
   alone (`--force` overwrites it after backing up your copy), and undo saves your
   edited copy to the backups instead of deleting it.
 - **Your Claude Code login stays yours.** `~/.claude` and `~/.claude.json` are
-  never recorded, so no undo removes them.
+  never recorded, so no undo removes them. The add-on modules record only the
+  plugins and skill they add there.
 - **Configs follow modules.** Undoing `docker` uninstalls its packages, removes its
   LazyVim extra and shell bits, and keeps any package another module still needs.
 

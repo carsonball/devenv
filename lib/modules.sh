@@ -68,6 +68,18 @@ order_modules() {
     done
   done
   for m in $CORE_ORDER; do case "$want" in *" $m "*) out="$out $m" ;; esac; done
-  for m in $want; do word_in "$m" "$CORE_ORDER" || out="$out $m"; done
+  # The rest as given, but each after the modules it requires (caveman after claude).
+  local rest='' left progress
+  for m in $want; do word_in "$m" "$CORE_ORDER" || rest="$rest $m"; done
+  while [ -n "$rest" ]; do
+    left='' progress=0
+    for m in $rest; do
+      local ready=1
+      for r in $(mod_get "$m" requires); do word_in "$r" "$out" || ready=0; done
+      if [ "$ready" = 1 ]; then out="$out $m"; progress=1; else left="$left $m"; fi
+    done
+    [ "$progress" = 1 ] || { out="$out$left"; break; }
+    rest=$left
+  done
   echo $out
 }
