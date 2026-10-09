@@ -2,11 +2,15 @@
 # Per-module steps beyond package installs. hook_<module> runs after the
 # module's packages are in place. Everything they change is recorded.
 
-hook_rust() {
-  local rustup=''
-  if [ -x "$BREW_PREFIX/opt/rustup/bin/rustup" ]; then rustup="$BREW_PREFIX/opt/rustup/bin/rustup"
-  elif has rustup; then rustup=$(command -v rustup)
+rustup_bin() {
+  if [ -x "$BREW_PREFIX/opt/rustup/bin/rustup" ]; then echo "$BREW_PREFIX/opt/rustup/bin/rustup"
+  else command -v rustup
   fi
+}
+
+hook_rust() {
+  local rustup
+  rustup=$(rustup_bin)
   if [ -z "$rustup" ]; then
     is_dry && step "would run: rustup default stable + rust-analyzer, clippy, rustfmt"
     return 0

@@ -5,7 +5,7 @@ mkdir -p "$db"; touch "$db/formulae" "$db/casks"
 echo "brew $*" >>"$db/calls"
 cask=0
 args=''
-for a in "$@"; do case "$a" in --cask) cask=1 ;; --formula|-1) ;; *) args="$args $a" ;; esac; done
+for a in "$@"; do case "$a" in --cask) cask=1 ;; --formula|-1|--verbose) ;; *) args="$args $a" ;; esac; done
 set -- $args
 f="$db/formulae"; [ $cask = 1 ] && f="$db/casks"
 case "$1" in
@@ -22,6 +22,12 @@ case "$1" in
       [ -n "${FAKE_BREW_SLOW:-}" ] && { sleep "$FAKE_BREW_SLOW"; echo "==> Pouring $n"; mkdir -p "$db/../opt/$n"; }
       grep -qx "$n" "$f" || echo "$n" >>"$f"
     done ;;
+  # outdated: lines "name installed latest" in fakedb/outdated.
+  outdated) shift; [ -f "$db/outdated" ] || exit 0
+    op='<'; [ $cask = 1 ] && op='!='
+    for n in "$@"; do awk -v n="$n" -v op="$op" '$1 == n { print $1 " (" $2 ") " op " " $3 }' "$db/outdated"; done ;;
+  upgrade) shift
+    for n in "$@"; do awk -v n="$n" '$1 != n' "$db/outdated" >"$db/o.tmp"; mv "$db/o.tmp" "$db/outdated"; done ;;
   uninstall) shift
     for n in "$@"; do
       case " ${FAKE_BREW_DEPENDED:-} " in *" $n "*) echo "Error: Refusing to uninstall $n because it is required by x" >&2; exit 1 ;; esac
