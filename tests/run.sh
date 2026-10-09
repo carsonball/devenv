@@ -84,6 +84,7 @@ t_mac_install_and_full_undo() {
   check "zshrc sources devenv" grep -q 'devenv/shell.sh' "$T/home/.zshrc"
   check "shell.sh has go path" grep -q 'GOPATH' "$T/home/.config/devenv/shell.sh"
   check "shell.sh has brew path" grep -q "$T/brew/bin/brew" "$T/home/.config/devenv/shell.sh"
+  check "shell.sh has mason path" grep -q "nvim/mason/bin" "$T/home/.config/devenv/shell.sh"
   check "compose plugin linked" [ -L "$T/home/.docker/cli-plugins/docker-compose" ]
   check "wezterm config for mac" grep -q 'font_size = 14' "$T/home/.config/wezterm/wezterm.lua"
   check "no pbcopy shim on macOS" [ ! -e "$T/home/.local/bin/pbcopy" ]

@@ -2,6 +2,8 @@
 # `devenv install`; put your own additions in ~/.config/devenv/local.sh.
 
 __devenv_path() { case ":$PATH:" in *":$1:"*) ;; *) [ -d "$1" ] && PATH="$1:$PATH" ;; esac; }
+# Same, but at the end: fills gaps without shadowing anything already on PATH.
+__devenv_path_append() { case ":$PATH:" in *":$1:"*) ;; *) [ -d "$1" ] && PATH="$PATH:$1" ;; esac; }
 
 [ -x "@@BREW@@" ] && eval "$("@@BREW@@" shellenv)"
 __devenv_path "$HOME/.local/bin"
