@@ -147,6 +147,11 @@ render_wezterm() {
   subst_line "$tmp" DEVENV_SETTINGS "$lines"
   install_file wezterm "$tmp" "$dir/wezterm.lua"
   rm -f "$tmp" "$lines"
+  # WSL: pbcopy/pbpaste for the Windows clipboard (used by Neovim too).
+  if [ "$IS_WSL" = 1 ]; then
+    install_file wezterm "$TPL/wezterm/pbcopy" "$HOME/.local/bin/pbcopy" 755
+    install_file wezterm "$TPL/wezterm/pbpaste" "$HOME/.local/bin/pbpaste" 755
+  fi
 }
 
 render_shell() {

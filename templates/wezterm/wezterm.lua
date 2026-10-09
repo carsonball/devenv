@@ -41,6 +41,9 @@ if devenv.wsl_distro then
     },
   }
   config.default_domain = "WSL:" .. devenv.wsl_distro
+  -- Windows text uses CRLF; paste it into WSL the way a Unix terminal would (CR),
+  -- so shells and Neovim don't see stray ^M characters.
+  config.canonicalize_pasted_newlines = "CarriageReturn"
 else
   config.default_prog = { devenv.shell, "-l", "-i", "-c", into_tmux }
 end

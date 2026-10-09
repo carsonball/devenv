@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# pbpaste for WSL: print the Windows clipboard as UTF-8 with Unix line endings,
+# like macOS pbpaste. Installed by devenv.
+
+ps=$(command -v powershell.exe) || ps=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+exec "$ps" -NoLogo -NoProfile -NonInteractive -Command '
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$t = (Get-Clipboard -Raw) -replace "`r`n", "`n"
+[Console]::Out.Write($t)'

@@ -86,6 +86,7 @@ t_mac_install_and_full_undo() {
   check "shell.sh has brew path" grep -q "$T/brew/bin/brew" "$T/home/.config/devenv/shell.sh"
   check "compose plugin linked" [ -L "$T/home/.docker/cli-plugins/docker-compose" ]
   check "wezterm config for mac" grep -q 'font_size = 14' "$T/home/.config/wezterm/wezterm.lua"
+  check "no pbcopy shim on macOS" [ ! -e "$T/home/.local/bin/pbcopy" ]
   check "colima note shown" has_out "colima start"
 
   local n; n=$(records)
@@ -222,6 +223,8 @@ t_wsl() {
   check "no colima on linux" sh -c "! grep -qx colima '$T/brew/fakedb/formulae'"
   check "wezterm config on Windows side" grep -q 'wsl_distro = "Ubuntu"' "$T/win/.config/wezterm/wezterm.lua"
   check "bashrc hook" grep -q 'devenv/shell.sh' "$T/home/.bashrc"
+  check "pbcopy/pbpaste for the Windows clipboard" [ -x "$T/home/.local/bin/pbcopy" ] && [ -x "$T/home/.local/bin/pbpaste" ]
+  check "wezterm pastes Unix newlines into WSL" grep -q 'canonicalize_pasted_newlines = "CarriageReturn"' "$T/win/.config/wezterm/wezterm.lua"
   check "numbered steps" has_out "[1/2] Installing packages"
   check "no desktop-Linux note on WSL" sh -c "! printf '%s' \"\$0\" | grep -q 'desktop Linux'" "$OUT"
   dev undo --all -y

@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# pbcopy for WSL: copy stdin to the Windows clipboard, like macOS pbcopy.
+# clip.exe mangles anything outside the ANSI code page (é, →, 日本), so this goes
+# through PowerShell with UTF-8 input and Windows (CRLF) line endings.
+# Installed by devenv.
+
+ps=$(command -v powershell.exe) || ps=/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe
+exec "$ps" -NoLogo -NoProfile -NonInteractive -Command '
+[Console]::InputEncoding = [Text.Encoding]::UTF8
+$t = [Console]::In.ReadToEnd() -replace "(?<!`r)`n", "`r`n"
+if ($t) { Set-Clipboard -Value $t }'

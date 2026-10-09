@@ -19,15 +19,13 @@ vim.api.nvim_create_autocmd("FileType", {
   end,
 })
 
--- WSL: route the system clipboard through Windows.
-if vim.fn.has("wsl") == 1 then
+-- WSL: route the system clipboard through Windows with devenv's pbcopy/pbpaste,
+-- which keep UTF-8 intact (clip.exe does not) and convert line endings.
+if vim.fn.has("wsl") == 1 and vim.fn.executable("pbcopy") == 1 then
   vim.g.clipboard = {
     name = "WslClipboard",
-    copy = { ["+"] = "clip.exe", ["*"] = "clip.exe" },
-    paste = {
-      ["+"] = 'powershell.exe -NoLogo -NoProfile -c [Console]::Out.Write($(Get-Clipboard -Raw).ToString().Replace("`r", ""))',
-      ["*"] = 'powershell.exe -NoLogo -NoProfile -c [Console]::Out.Write($(Get-Clipboard -Raw).ToString().Replace("`r", ""))',
-    },
+    copy = { ["+"] = { "pbcopy" }, ["*"] = { "pbcopy" } },
+    paste = { ["+"] = { "pbpaste" }, ["*"] = { "pbpaste" } },
     cache_enabled = 0,
   }
 end

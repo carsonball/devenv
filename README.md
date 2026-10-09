@@ -142,6 +142,15 @@ during `devenv install`, so the first `nvim` launch is ready to use.
 | Neovim  | `Space a a` / `Space a d`    | accept / reject the diff Claude proposed               |
 | shell   | `Ctrl-r`, `Ctrl-t`, `z dir`  | fuzzy history, fuzzy file, jump to a frequent dir      |
 
+**Clipboard.** Yanks in Neovim (`"+y`, or `y` with LazyVim's default
+`clipboard=unnamedplus`) and in tmux copy mode or a mouse drag land in the system
+clipboard, and `Ctrl-Shift-v` (`Cmd-v` on macOS) pastes from it. On Windows the
+tmux side goes through WezTerm (OSC 52); Neovim uses `pbcopy`/`pbpaste`, which
+devenv installs in WSL with the same meaning as on macOS (`git diff | pbcopy`,
+`pbpaste > notes.txt`). They keep non-ASCII text intact and convert line endings
+(CRLF on Windows, LF in WSL); `clip.exe` mangles anything outside the ANSI code
+page. Hold `Shift` while dragging to select with WezTerm instead of tmux.
+
 In Claude Code, `Ctrl-j` always adds a new line; `Shift-Enter` does too where the
 terminal passes it through (devenv turns on tmux's extended keys for that).
 
@@ -225,7 +234,9 @@ extras=lang.ruby
   Neovim in Ubuntu's apt is too old for LazyVim), and clean per-package uninstall.
 - **Colima, not Docker Desktop, on macOS**: no licence question on a work machine.
 - **WSL on Windows**: tmux needs a Unix; WezTerm stays native for proper
-  rendering and clipboard, and the Neovim config routes the clipboard through Windows.
+  rendering and clipboard. Neovim reaches the Windows clipboard through
+  PowerShell (`pbcopy`/`pbpaste`), not `clip.exe`, which can't take UTF-8. WezTerm
+  pastes into WSL with Unix newlines, so no stray `^M` characters.
 - **Quiet screen, full log**: installs are numbered steps (`[2/5] Installing packages`).
   Long commands show one live line with a progress bar where the count is known
   (packages, language tools, parsers) or a spinner, elapsed time and latest activity
