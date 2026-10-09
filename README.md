@@ -54,9 +54,11 @@ it's just `devenv install python`. `devenv self-update` fetches the latest deven
 
 | Command                       | Does                                                                 |
 |-------------------------------|----------------------------------------------------------------------|
-| `devenv install [what...]`    | install the core modules plus the ones you name (re-running refreshes them) |
+| `devenv install [what...]`    | install the core modules plus the ones you name (re-running repairs them; it never upgrades) |
 | `devenv plan [what...]`       | show what `install` would do, change nothing (same as `install --dry-run`) |
 | `devenv status`               | installed modules and every recorded change, numbered                |
+| `devenv outdated [what...]`   | packages devenv installed that have newer versions, installed vs latest |
+| `devenv update [what...]`     | install those newer versions                                         |
 | `devenv undo <what...>`       | undo modules; or `--id N...`, `--last`, `--run <id>`, `--all`        |
 | `devenv diff <N\|path>`       | compare a replaced file with your original                           |
 | `devenv log`                  | full history of changes and undos                                    |
@@ -66,8 +68,17 @@ it's just `devenv install python`. `devenv self-update` fetches the latest deven
 
 Options: `-y` skips the confirmation, `-n`/`--dry-run` changes nothing, `-f`/`--force`
 overwrites devenv-written configs you edited (after backing up your copy),
-`--no-sync` skips pre-installing Neovim plugins and language tools, and
+`--no-sync` skips Neovim plugins and language tools (in `install`, `outdated` and `update`), and
 `--include-homebrew` (with `undo --all`) removes Homebrew too.
+
+`outdated` and `update` cover only what devenv installed: Homebrew formulae and
+apps, Windows apps from winget, the Rust toolchain, Neovim plugins and Mason's
+tools. Anything you already had stays yours, and Claude Code updates itself. Name
+modules to narrow it (`devenv update go`); Neovim plugins and tools come with
+`nvim` or with no modules named. Updates aren't recorded: `devenv undo` still
+removes a package but can't take it back to an older version. `install` adds
+only missing Neovim plugins, at the versions in `lazy-lock.json`, but keeps
+LazyVim in step with devenv's configs.
 
 Installs run as numbered steps with a live progress line for long ones; the full
 output of every command is in `~/.local/state/devenv/runs/<run>.log`.

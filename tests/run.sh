@@ -305,6 +305,29 @@ t_diff_and_log() {
   check "log has entries" has_out "do #1 "
 }
 
+t_outdated_and_update() {
+  setup outdated darwin
+  echo git >"$T/brew/fakedb/formulae"                          # you already had git
+  dev install go -y --no-sync
+  printf 'go 1.22.1 1.22.2\ngit 2.40 2.41\nwezterm 1 2\n' >"$T/brew/fakedb/outdated"
+  dev outdated --no-sync
+  check "outdated lists devenv's formula" has_out "go                           1.22.1 -> 1.22.2"
+  check "outdated lists devenv's cask" has_out "wezterm                      1 -> 2"
+  check "outdated skips packages you had" sh -c "! printf '%s' \"\$0\" | grep -q git" "$OUT"
+  dev outdated docker
+  check "outdated rejects modules not installed" [ "$RC" != 0 ]
+  dev update go -y --no-sync
+  check "update succeeds" [ "$RC" = 0 ]
+  check "update upgrades only the named module" grep -q 'brew upgrade --formula go' "$T/brew/fakedb/calls"
+  check "update leaves other modules alone" sh -c "! grep -q 'upgrade --cask' '$T/brew/fakedb/calls'"
+  check "update records no changes" sh -c "! grep -q update- '$T/home/.local/state/devenv/manifest.tsv'"
+  dev update -y --no-sync
+  check "update all upgrades the cask" grep -q 'brew upgrade --cask wezterm' "$T/brew/fakedb/calls"
+  check "git never upgraded" sh -c "! grep -q 'upgrade.* git' '$T/brew/fakedb/calls'"
+  dev outdated --no-sync
+  check "up to date afterwards" has_out "Everything is up to date."
+}
+
 t_repo_file_modes() {
   CURRENT=modes
   # Executables must be committed as such: the install tarball comes from git.

@@ -27,6 +27,7 @@ export DEVENV_HOME
 . "$DEVENV_HOME/lib/hooks.sh"
 . "$DEVENV_HOME/lib/render.sh"
 . "$DEVENV_HOME/lib/undo.sh"
+. "$DEVENV_HOME/lib/update.sh"
 
 usage() {
   cat <<EOF
@@ -36,6 +37,8 @@ Usage:
   devenv install [what...]   install core tools and configs, plus modules for what you name
   devenv plan [what...]      show what install would do, change nothing
   devenv status              what is installed, and every recorded change
+  devenv outdated [what...]  packages devenv installed that have newer versions
+  devenv update [what...]    install those newer versions
   devenv undo <what...>      undo modules (e.g. docker), or:
         --id N [N...]        specific changes from \`devenv status\`
         --run ID | --last    everything one run did
@@ -53,7 +56,7 @@ Options:
   -y, --yes             don't ask for confirmation
   -n, --dry-run         show what would happen, change nothing
   -f, --force           overwrite devenv-written configs even if you edited them (yours are backed up)
-      --no-sync         skip pre-installing Neovim plugins and language servers
+      --no-sync         skip Neovim plugins and language servers (install, outdated, update)
       --include-homebrew  with undo --all: also remove Homebrew if devenv installed it
 
 State lives in $(tilde "$STATE_DIR").
@@ -75,12 +78,14 @@ nvim_sync() {
   track_new_dir nvim "$HOME/.local/state/nvim"
   track_new_dir nvim "$HOME/.cache/nvim"
   if is_dry; then
-    step "would run: nvim --headless \"+Lazy! sync\" +qa"
+    step "would run: nvim --headless \"+Lazy! clean\" \"+Lazy! install\" \"+Lazy! update LazyVim\" +qa"
     phase "Installing language servers, linters, debuggers and parsers"
     step "would install them with Mason and nvim-treesitter"
     return 0
   fi
-  if prun "Installing Neovim plugins" "probe_size '$HOME/.local/share/nvim/lazy'" "$nvim" --headless "+Lazy! sync" +qa; then
+  # Missing plugins only, at their lazy-lock.json versions; `devenv update` moves
+  # them forward. LazyVim itself follows devenv's configs, which name its extras.
+  if prun "Installing Neovim plugins" "probe_size '$HOME/.local/share/nvim/lazy'" "$nvim" --headless "+Lazy! clean" "+Lazy! install" "+Lazy! update LazyVim" +qa; then
     ok "$(probe_entries "$HOME/.local/share/nvim/lazy" plugins | awk '{ print $1, $3 }') ready"
   else
     warn "plugin sync reported errors; see $RUN_LOG"
@@ -421,6 +426,8 @@ $a" ;;
     plan) DRY_RUN=1; cmd_install "$@" ;;
     undo|remove|uninstall) cmd_undo "$@" ;;
     status|list|ls) cmd_status ;;
+    outdated) cmd_outdated "$@" ;;
+    update|upgrade) cmd_update "$@" ;;
     log|history) cmd_log ;;
     diff) cmd_diff "$@" ;;
     modules) cmd_modules ;;
