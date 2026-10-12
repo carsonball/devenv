@@ -18,3 +18,10 @@ map("n", "<leader>fX", "<cmd>!chmod +x %<cr>", { desc = "Make file executable", 
 if vim.env.TMUX then
   map("n", "<C-f>", "<cmd>silent !tmux neww tmux-sessionizer<cr>", { desc = "Switch project (tmux)" })
 end
+
+-- Jumplist on Ctrl-[ / Ctrl-] instead of Ctrl-o / Ctrl-i. Ctrl-[ needs a
+-- terminal that sends it apart from Esc (devenv's WezTerm config does).
+map("n", "<C-[>", "<C-o>", { desc = "Jump back" })
+map("n", "<C-]>", "<C-i>", { desc = "Jump forward" })
+map("n", "<C-o>", "<Nop>")
+map("n", "<C-i>", "<Nop>")

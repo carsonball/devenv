@@ -55,6 +55,8 @@ config.keys = {
   { key = "T", mods = "CTRL|SHIFT", action = plain_shell },
   -- Ctrl-Shift-F toggles full screen.
   { key = "F", mods = "CTRL|SHIFT", action = act.ToggleFullScreen },
+  -- Send Ctrl-[ as CSI u so Neovim can tell it apart from Esc (jump back).
+  { key = "[", mods = "CTRL", action = act.SendString("\x1b[91;5u") },
 }
 
 if wezterm.target_triple:find("darwin") then

@@ -105,7 +105,7 @@ Languages and tools (name a module or any of its aliases, e.g. `ts`, `.tsx`, `ku
 | `rust`       | rustup (stable + rust-analyzer, clippy) | rustaceanvim, clippy, codelldb, crates.nvim                     |
 | `docker`     | docker CLI, compose, buildx, lazydocker; Colima on macOS | dockerls, compose LSP, hadolint                  |
 | `k8s`        | kubectl, helm, k9s, kubectx, stern      | helm-ls, Kubernetes schemas for manifests                       |
-| `terraform`  | terraform, tflint                       | terraform-ls, tflint                                            |
+| `terraform`  | terraform                               | terraform-ls, tflint                                            |
 | `java`       | OpenJDK 21, maven, gradle               | jdtls, java-debug, java-test                                    |
 | `cpp`        | cmake                                   | clangd, clang-format, codelldb, cmake tools                     |
 | `bash`       | shellcheck, shfmt                       | bash-language-server, shellcheck, shfmt                         |
@@ -165,6 +165,7 @@ during `devenv install`, so the first `nvim` launch is ready to use.
 | Neovim  | `Space d b` / `Space d c`    | breakpoint / start or continue debugging               |
 | Neovim  | `Space c f`, `Space c a`     | format, code actions                                   |
 | Neovim  | `Space g g`                  | lazygit                                                |
+| Neovim  | `Ctrl-[` / `Ctrl-]`          | jump back / forward (replaces `Ctrl-o` / `Ctrl-i`)     |
 | Neovim  | `Ctrl-f`                     | switch project (tmux session picker)                   |
 | Neovim  | `Space a c` / `Space a s`    | toggle Claude / send selection to it (`claude` module) |
 | Neovim  | `Space a a` / `Space a d`    | accept / reject the diff Claude proposed               |

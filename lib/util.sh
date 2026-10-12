@@ -137,6 +137,7 @@ prun() {
   local label=$1 probe=${2:-probe_last} pid start=$SECONDS tick=0 note='' rc cols; shift 2
   if is_dry || [ "$UI_TTY" != 1 ] || [ -z "${RUN_LOG:-}" ]; then run "$@"; return; fi
   printf '  - $ %s\n' "$*" >>"$RUN_LOG"
+  local from; from=$(wc -c <"$RUN_LOG")
   cols=$(tput cols 2>/dev/null || echo 80)
   "$@" </dev/null >>"$RUN_LOG" 2>&1 &
   pid=$!; PRUN_PID=$pid
@@ -152,7 +153,12 @@ prun() {
   PRUN_PID=''
   trap - INT TERM
   printf '\r\033[K\033[?25h' >&2
-  [ "$rc" = 0 ] || step "${C_DIM}$label failed after $(fmt_secs $((SECONDS - start)))${C_RESET}"
+  if [ "$rc" != 0 ]; then
+    step "${C_DIM}$label failed after $(fmt_secs $((SECONDS - start)))${C_RESET}"
+    # Surface the cause here: error lines from this command, else its last lines.
+    local out; out=$(tail -c +$((from + 1)) "$RUN_LOG" | grep -v '^[[:space:]]*$')
+    { printf '%s\n' "$out" | grep -iE '^(error|warning|fatal)' || printf '%s\n' "$out"; } | tail -n 3 | sed 's/^/      /' >&2
+  fi
   return "$rc"
 }
 
