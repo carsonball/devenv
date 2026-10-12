@@ -58,3 +58,20 @@ y() {
   rm -f -- "$tmp"
 }
 command -v starship >/dev/null 2>&1 && eval "$(starship init $__devenv_sh)"
+
+# Tab completion for devenv: subcommands, then module names for install/plan/undo/etc.
+_devenv_complete() {
+  local cur=${COMP_WORDS[COMP_CWORD]} words m dir
+  if [ "$COMP_CWORD" -eq 1 ]; then
+    words="install plan status outdated update undo diff log modules doctor self-update"
+  else
+    case "${COMP_WORDS[1]}" in
+      install|plan|outdated|update|undo)
+        dir="$(dirname "$(readlink -f "$(command -v devenv)")")/../modules"
+        for m in "$dir"/*.conf; do [ -f "$m" ] && m=${m##*/} && words="$words ${m%.conf}"; done ;;
+    esac
+  fi
+  COMPREPLY=($(compgen -W "$words" -- "$cur"))
+}
+[ "$__devenv_sh" = zsh ] && autoload -Uz bashcompinit && bashcompinit
+complete -F _devenv_complete devenv
