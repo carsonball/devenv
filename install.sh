@@ -1,7 +1,7 @@
 #!/bin/bash
-# Bootstrap devenv on a fresh machine, then run `devenv install` with your args.
+# Put devenv on a fresh machine. Installs nothing else: run `devenv install` yourself.
 #
-#   curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash -s -- go docker k8s ts
+#   curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash
 #
 # Needs only bash, curl and tar, which macOS and Ubuntu ship with. devenv itself
 # goes to ~/.local/share/devenv and is linked as ~/.local/bin/devenv; it is not
@@ -58,8 +58,10 @@ main() {
   say "devenv is at $BIN/devenv"
   [ "$update_only" = 1 ] && exit 0
 
-  case ":$PATH:" in *":$BIN:"*) ;; *) export PATH="$BIN:$PATH" ;; esac
-  exec "$src/bin/devenv" install "$@"
+  cmd=devenv
+  case ":$PATH:" in *":$BIN:"*) ;; *) cmd="$BIN/devenv" ;; esac
+  say "Nothing else was installed. See what devenv can set up, preview it, then install:"
+  printf '    %s\n' "$cmd modules" "$cmd plan${*:+ $*}" "$cmd install${*:+ $*}" >&2
 }
 
 main "$@"

@@ -1,6 +1,6 @@
 # devenv
 
-One command sets up a terminal dev environment built around **WezTerm**, **tmux**
+A CLI that sets up a terminal dev environment built around **WezTerm**, **tmux**
 and **LazyVim**, with language servers, formatters, linters, debuggers and test
 runners for the languages and tools you name. Every package installed and every
 file touched is recorded, and any of it can be undone.
@@ -14,41 +14,48 @@ devenv undo --all        # put the machine back the way it was
 
 ## Getting it onto a machine
 
-devenv is plain bash (3.2+, the version macOS ships) and needs nothing but `curl`
-and `tar` to bootstrap. It downloads from the public repo
-[carsonball/devenv](https://github.com/carsonball/devenv), so a fresh work laptop
-needs no GitHub login.
+Two steps: put devenv on the machine, then tell it what to install. The first
+step installs nothing but devenv itself (`~/.local/share/devenv`, linked as
+`~/.local/bin/devenv`). It downloads from the public repo
+[carsonball/devenv](https://github.com/carsonball/devenv); no GitHub login needed.
 
-**macOS** (one line in Terminal; it asks for your password once, for Homebrew):
+**1. Get devenv.**
+
+macOS and Linux, in a terminal:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash -s -- go docker k8s ts
+curl -fsSL https://raw.githubusercontent.com/carsonball/devenv/main/install.sh | bash
 ```
 
-This installs the Xcode command-line tools and Homebrew if missing, then WezTerm,
-tmux, Neovim and everything else. Open WezTerm when it finishes.
-
-**Windows** (PowerShell): tmux has no Windows build, so WezTerm runs on Windows
+Windows, in PowerShell: tmux has no Windows build, so WezTerm runs on Windows
 and everything else runs in WSL (Ubuntu). The bootstrap installs WSL if needed
-(Windows may reboot; run it again afterwards), then runs devenv inside Ubuntu,
-which installs WezTerm on Windows with `winget` and points it at WSL.
+(Windows may reboot; run it again afterwards), then puts devenv inside Ubuntu.
+If WSL and Ubuntu are already set up, you can run the line above inside Ubuntu
+instead.
 
 ```powershell
-& ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1))) go docker k8s ts
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1)))
 ```
 
-From a local copy, without GitHub: `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source . go docker k8s ts`
+From a local copy, without GitHub: `powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source .`
 
-If WSL and Ubuntu are already set up, you can skip the bootstrap and run the
-macOS one-liner inside Ubuntu instead; it installs WezTerm on Windows the same way.
+**2. Install.** In the same terminal (on Windows, in Ubuntu). If `devenv` isn't
+found yet, use `~/.local/bin/devenv`; the install puts it on your PATH.
 
-**Linux**: same one-liner as macOS (Debian/Ubuntu get build prerequisites from
-apt; elsewhere install curl, git, gcc, make and file first). WezTerm isn't
-installed for you on desktop Linux (install it from your distro), but its config
-and the Nerd Font are.
+```sh
+devenv modules                   # what's available
+devenv plan go docker            # what it would change, nothing installed
+devenv install go docker         # the core (see What you get) plus go and docker
+```
 
-After the first run, `devenv` is on your PATH (`~/.local/bin/devenv`), so later
-it's just `devenv install python`. `devenv self-update` fetches the latest devenv.
+- **macOS**: installs the Xcode command-line tools and Homebrew if missing (asks
+  for your password once), then WezTerm, tmux, Neovim and the rest.
+- **Windows**: installs WezTerm with `winget` and points it at WSL.
+- **Linux**: Debian/Ubuntu get build prerequisites from apt; elsewhere install
+  curl, git, gcc, make and file first. Install WezTerm from your distro; devenv
+  writes its config and the Nerd Font.
+
+Open WezTerm when it finishes.
 
 ## Commands
 
@@ -66,22 +73,17 @@ it's just `devenv install python`. `devenv self-update` fetches the latest deven
 | `devenv doctor`               | check that the tools and configs are wired up                        |
 | `devenv self-update`          | update devenv itself                                                 |
 
-Options: `-y` skips the confirmation, `-n`/`--dry-run` changes nothing, `-f`/`--force`
-overwrites devenv-written configs you edited (after backing up your copy),
-`--no-sync` skips Neovim plugins and language tools (in `install`, `outdated` and `update`), and
-`--include-homebrew` (with `undo --all`) removes Homebrew too.
+Options:
 
-`outdated` and `update` cover only what devenv installed: Homebrew formulae and
-apps, Windows apps from winget, the Rust toolchain, Neovim plugins and Mason's
-tools. Anything you already had stays yours, and Claude Code updates itself. Name
-modules to narrow it (`devenv update go`); Neovim plugins and tools come with
-`nvim` or with no modules named. Updates aren't recorded: `devenv undo` still
-removes a package but can't take it back to an older version. `install` adds
-only missing Neovim plugins, at the versions in `lazy-lock.json`, but keeps
-LazyVim in step with devenv's configs.
+- `-y` skips the confirmation.
+- `-n`/`--dry-run` changes nothing.
+- `-f`/`--force` overwrites devenv-written configs you edited, after backing up your copy.
+- `--no-sync` skips Neovim plugins and language tools (`install`, `outdated`, `update`).
+- `--include-homebrew` (with `undo --all`) removes Homebrew too.
 
-Installs run as numbered steps with a live progress line for long ones; the full
-output of every command is in `~/.local/state/devenv/runs/<run>.log`.
+`outdated` and `update` cover only what devenv installed (Homebrew, winget,
+rustup, Neovim plugins, Mason tools). Updates aren't recorded, so undo removes a
+package but can't downgrade it.
 
 ## What you get
 
@@ -115,33 +117,27 @@ Optional extras:
 
 | Module   | Installs                                                        | Wiring                                                    |
 |----------|-----------------------------------------------------------------|-----------------------------------------------------------|
-| `claude` | Claude Code CLI (Anthropic's installer, same on macOS/Linux/WSL) | tmux popup on `Ctrl-a C`; Neovim integration through LazyVim's `ai.claudecode` extra (claudecode.nvim): open Claude in a split, send selections, accept or reject its edits as diffs |
+| `claude` (`claude-code`, `claudecode`) | Claude Code CLI (Anthropic's installer, same on macOS/Linux/WSL) | tmux popup on `Ctrl-a C`; Neovim integration through LazyVim's `ai.claudecode` extra (claudecode.nvim): open Claude in a split, send selections, accept or reject its edits as diffs |
 
-Aliases: `claude-code`, `claudecode`. Run `claude` once afterwards to sign in. Claude
-Code keeps itself up to date. devenv never touches your login, settings or
-history (`~/.claude`, `~/.claude.json`), not even on undo.
+Run `claude` once afterwards to sign in. devenv never touches your login,
+settings or history (`~/.claude`, `~/.claude.json`), not even on undo.
 
 Add-ons for Claude Code (each brings in `claude`):
 
-| Module       | What                                                                 | How it's installed, and undone |
-|--------------|----------------------------------------------------------------------|--------------------------------|
-| `caveman`    | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review` | Claude Code plugin from its own marketplace (`claude plugin install caveman@caveman`); the skill only, not the token proxy |
-| `ponytail`   | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit` | Claude Code plugin (`ponytail@ponytail`) |
-| `lavish`     | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`) | Skill file in `~/.claude/skills/lavish` (a copy ships in `templates/claude/skills`); the CLI runs through `npx` on first use |
-| `nomistakes` | [no-mistakes](https://github.com/kunchenguid/no-mistakes): `git push no-mistakes` runs an AI review, tests and lint in a worktree, then opens the PR | The project's installer: binary in `~/.no-mistakes`, link in `~/.local/bin`, background daemon (launchd or a systemd user service). Telemetry off |
+| Module       | What                                                                 |
+|--------------|----------------------------------------------------------------------|
+| `caveman` (`cave`) | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review` |
+| `ponytail`   | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit` |
+| `lavish` (`lavish-axi`) | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`) |
+| `nomistakes` (`no-mistakes`, `nm`) | [no-mistakes](https://github.com/kunchenguid/no-mistakes): `git push no-mistakes` runs an AI review, tests and lint in a worktree, then opens the PR. Per repo: `no-mistakes init` / `no-mistakes eject` |
 
-Aliases: `cave`, `lavish-axi`, `no-mistakes`, `nm`. Plugins load in the next
-`claude` session. Undo goes through Claude Code's own `claude plugin uninstall`
-and `claude plugin marketplace remove`, and stops the no-mistakes daemon before
-removing it. A plugin, skill or no-mistakes you already had is used as is and
-never removed. no-mistakes is per repo: `no-mistakes init` adds a `no-mistakes`
-remote and a `/no-mistakes` skill that devenv doesn't track (`no-mistakes eject`
-takes a repo back out).
+Plugins load in the next `claude` session. Undo uses `claude plugin uninstall`;
+anything you already had is never removed.
 
-`devenv modules` lists them all with their aliases. The Neovim side is built on
-[LazyVim extras](https://www.lazyvim.org/extras), so it follows LazyVim's
-upstream defaults. Language servers and tools are pre-installed through Mason
-during `devenv install`, so the first `nvim` launch is ready to use.
+The Neovim side is built on [LazyVim extras](https://www.lazyvim.org/extras), so
+it follows LazyVim's upstream defaults. Language servers and tools are
+pre-installed through Mason during `devenv install`, so the first `nvim` launch
+is ready to use.
 
 ### Keys worth knowing
 
@@ -171,14 +167,9 @@ during `devenv install`, so the first `nvim` launch is ready to use.
 | Neovim  | `Space a a` / `Space a d`    | accept / reject the diff Claude proposed               |
 | shell   | `Ctrl-r`, `Ctrl-t`, `z dir`  | fuzzy history, fuzzy file, jump to a frequent dir      |
 
-**Clipboard.** Yanks in Neovim (`"+y`, or `y` with LazyVim's default
-`clipboard=unnamedplus`) and in tmux copy mode or a mouse drag land in the system
-clipboard, and `Ctrl-Shift-v` (`Cmd-v` on macOS) pastes from it. On Windows the
-tmux side goes through WezTerm (OSC 52); Neovim uses `pbcopy`/`pbpaste`, which
-devenv installs in WSL with the same meaning as on macOS (`git diff | pbcopy`,
-`pbpaste > notes.txt`). They keep non-ASCII text intact and convert line endings
-(CRLF on Windows, LF in WSL); `clip.exe` mangles anything outside the ANSI code
-page. Hold `Shift` while dragging to select with WezTerm instead of tmux.
+**Clipboard.** Yanks in Neovim and tmux (copy mode or a mouse drag) go to the
+system clipboard; `Ctrl-Shift-v` (`Cmd-v` on macOS) pastes. Hold `Shift` while
+dragging to select with WezTerm instead of tmux.
 
 In Claude Code, `Ctrl-j` always adds a new line; `Shift-Enter` does too where the
 terminal passes it through (devenv turns on tmux's extended keys for that).
@@ -200,29 +191,15 @@ nvim
 
 Rules it follows:
 
-- **Packages** are recorded only if devenv installed them. Something you already
-  had (from Homebrew, nvm, apt, Docker Desktop...) is used as is and never removed.
-- **Existing files are never deleted.** A config devenv replaces (your old
-  `~/.config/nvim`, `~/.tmux.conf`, `~/.wezterm.lua`) is moved into
-  `~/.local/state/devenv/backups/<run>/` and put back on undo.
-- **Your rc files are only appended to**, inside a marked
-  `# >>> devenv >>>` block; undo removes exactly that block.
-- **Your edits win.** If you edit a file devenv wrote, re-running devenv leaves it
-  alone (`--force` overwrites it after backing up your copy), and undo saves your
-  edited copy to the backups instead of deleting it.
-- **Your Claude Code login stays yours.** `~/.claude` and `~/.claude.json` are
-  never recorded, so no undo removes them. The add-on modules record only the
-  plugins and skill they add there.
-- **Configs follow modules.** Undoing `docker` uninstalls its packages, removes its
-  LazyVim extra and shell bits, and keeps any package another module still needs.
+- **Packages you already had are never removed**; only what devenv installed is recorded.
+- **Existing files are never deleted**: replaced configs go to `~/.local/state/devenv/backups/<run>/` and come back on undo.
+- **rc files are only appended to**, in a `# >>> devenv >>>` block that undo removes.
+- **Your edits win**: re-runs leave edited files alone (unless `--force`), and undo backs them up instead of deleting.
+- **Your Claude Code login stays yours**: `~/.claude` and `~/.claude.json` are never recorded.
+- **Configs follow modules**: undoing `docker` removes its packages, LazyVim extra and shell bits, keeping packages another module needs.
 
-Undo by module (`devenv undo k8s`), by change (`devenv undo --id 17 18`), by run
-(`devenv undo --last`, `--run <id>`) or entirely (`devenv undo --all`). Undoing a
-core module (say `tmux`) also undoes what depends on it, and devenv won't add it
-back until you ask for it by name. `devenv plan <what>` shows what an install
-would do without changing anything, and `devenv diff <N|path>` compares a
-replaced file with your original. Homebrew itself is only removed with
-`devenv undo --all --include-homebrew`.
+Undoing a core module (say `tmux`) also undoes what depends on it; devenv won't
+re-add it until you name it.
 
 ## Customising
 
@@ -267,11 +244,8 @@ extras=lang.ruby
   rendering and clipboard. Neovim reaches the Windows clipboard through
   PowerShell (`pbcopy`/`pbpaste`), not `clip.exe`, which can't take UTF-8. WezTerm
   pastes into WSL with Unix newlines, so no stray `^M` characters.
-- **Quiet screen, full log**: installs are numbered steps (`[2/5] Installing packages`).
-  Long commands show one live line with a progress bar where the count is known
-  (packages, language tools, parsers) or a spinner, elapsed time and latest activity
-  where it isn't. Their full output goes to `~/.local/state/devenv/runs/<run>.log`.
-  Without a terminal, or with `DEVENV_PLAIN=1`, you get plain lines instead.
+- **Quiet screen, full log**: numbered steps with a live progress line; full
+  output in `~/.local/state/devenv/runs/<run>.log` (`DEVENV_PLAIN=1` for plain lines).
 
 ## Repository layout
 

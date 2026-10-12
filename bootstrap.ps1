@@ -3,22 +3,22 @@
   tmux and Neovim run in WSL (tmux has no native Windows build).
 
   From a PowerShell prompt:
-    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1))) go docker k8s ts
+    & ([scriptblock]::Create((irm https://raw.githubusercontent.com/carsonball/devenv/main/bootstrap.ps1)))
 
   Or from a local copy (no GitHub needed):
-    powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source . go docker k8s ts
+    powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1 -Source .
 
   What it does:
     1. Makes sure WSL and an Ubuntu distro exist (installs them if not; Windows may ask to reboot).
-    2. Runs devenv inside Ubuntu. devenv installs WezTerm on Windows through winget,
-       writes its config to %USERPROFILE%\.config\wezterm, and records both so
-       `devenv undo` can remove them.
+    2. Puts devenv inside Ubuntu, and nothing else. Then you run `devenv install`
+       in Ubuntu: it installs WezTerm on Windows through winget, writes its config
+       to %USERPROFILE%\.config\wezterm, and records both so `devenv undo` can
+       remove them.
 #>
 param(
   [string]$Repo = $(if ($env:DEVENV_REPO) { $env:DEVENV_REPO } else { 'carsonball/devenv' }),
   [string]$Distro = 'Ubuntu',
-  [string]$Source = '',
-  [Parameter(ValueFromRemainingArguments = $true)][string[]]$Modules
+  [string]$Source = ''
 )
 $ErrorActionPreference = 'Stop'
 
@@ -38,16 +38,16 @@ if ($distros -notcontains $Distro) {
   exit 0
 }
 
-$argLine = ($Modules | ForEach-Object { "'" + ($_ -replace "'", '') + "'" }) -join ' '
 if ($Source) {
   $full = (Resolve-Path $Source).Path
   $wslPath = (& wsl.exe -d $Distro -- wslpath -a ($full -replace '\\', '/')).Trim()
-  Say "Running devenv from $full inside $Distro"
-  & wsl.exe -d $Distro -- bash -lc "bash '$wslPath/install.sh' $argLine"
+  Say "Installing devenv from $full inside $Distro"
+  & wsl.exe -d $Distro -- bash -lc "bash '$wslPath/install.sh'"
 } else {
-  Say "Running devenv inside $Distro"
-  & wsl.exe -d $Distro -- bash -lc "curl -fsSL https://raw.githubusercontent.com/$Repo/main/install.sh | DEVENV_REPO='$Repo' bash -s -- $argLine"
+  Say "Installing devenv inside $Distro"
+  & wsl.exe -d $Distro -- bash -lc "curl -fsSL https://raw.githubusercontent.com/$Repo/main/install.sh | DEVENV_REPO='$Repo' bash"
 }
 if ($LASTEXITCODE -ne 0) { throw "devenv exited with $LASTEXITCODE" }
 
-Say 'Done. Open WezTerm from the Start menu: it starts in tmux inside WSL.'
+Say "Done. Open $Distro from the Start menu and run: devenv install (devenv modules lists what it can add)"
+Say 'Then open WezTerm from the Start menu: it starts in tmux inside WSL.'
