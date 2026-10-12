@@ -25,7 +25,7 @@ return {
         ["markdownlint-cli2"] = {
           parser = function(...)
             return vim.tbl_filter(function(d)
-              return not d.message:match("^MD013")
+              return not d.message:find("MD013/", 1, true)
             end, require("lint.linters.markdownlint-cli2").parser(...))
           end,
         },
