@@ -16,6 +16,30 @@ return {
   -- Same palette as WezTerm and tmux.
   { "folke/tokyonight.nvim", opts = { style = "night" } },
 
+  -- No line-length warnings: drop markdownlint's MD013 and sqlfluff's LT05.
+  {
+    "mfussenegger/nvim-lint",
+    optional = true,
+    opts = {
+      linters = {
+        ["markdownlint-cli2"] = {
+          parser = function(...)
+            return vim.tbl_filter(function(d)
+              return not d.message:match("^MD013")
+            end, require("lint.linters.markdownlint-cli2").parser(...))
+          end,
+        },
+        sqlfluff = {
+          parser = function(...)
+            return vim.tbl_filter(function(d)
+              return d.code ~= "LT05"
+            end, require("lint.linters.sqlfluff").parser(...))
+          end,
+        },
+      },
+    },
+  },
+
   -- Show dotfiles in the file pickers and explorer (git-ignored files stay hidden).
   {
     "folke/snacks.nvim",

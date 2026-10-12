@@ -59,19 +59,19 @@ Open WezTerm when it finishes.
 
 ## Commands
 
-| Command                       | Does                                                                 |
-|-------------------------------|----------------------------------------------------------------------|
-| `devenv install [what...]`    | install the core modules plus the ones you name (re-running repairs them; it never upgrades) |
-| `devenv plan [what...]`       | show what `install` would do, change nothing (same as `install --dry-run`) |
-| `devenv status`               | installed modules and every recorded change, numbered                |
-| `devenv outdated [what...]`   | packages devenv installed that have newer versions, installed vs latest |
-| `devenv update [what...]`     | install those newer versions                                         |
-| `devenv undo <what...>`       | undo modules; or `--id N...`, `--last`, `--run <id>`, `--all`        |
-| `devenv diff <N\|path>`       | compare a replaced file with your original                           |
-| `devenv log`                  | full history of changes and undos                                    |
-| `devenv modules`              | every module and the words that select it                            |
-| `devenv doctor`               | check that the tools and configs are wired up                        |
-| `devenv self-update`          | update devenv itself                                                 |
+| Command                     | Does                                                                                         |
+| --------------------------- | -------------------------------------------------------------------------------------------- |
+| `devenv install [what...]`  | install the core modules plus the ones you name (re-running repairs them; it never upgrades) |
+| `devenv plan [what...]`     | show what `install` would do, change nothing (same as `install --dry-run`)                   |
+| `devenv status`             | installed modules and every recorded change, numbered                                        |
+| `devenv outdated [what...]` | packages devenv installed that have newer versions, installed vs latest                      |
+| `devenv update [what...]`   | install those newer versions                                                                 |
+| `devenv undo <what...>`     | undo modules; or `--id N...`, `--last`, `--run <id>`, `--all`                                |
+| `devenv diff <N\|path>`     | compare a replaced file with your original                                                   |
+| `devenv log`                | full history of changes and undos                                                            |
+| `devenv modules`            | every module and the words that select it                                                    |
+| `devenv doctor`             | check that the tools and configs are wired up                                                |
+| `devenv self-update`        | update devenv itself                                                                         |
 
 Options:
 
@@ -89,34 +89,34 @@ package but can't downgrade it.
 
 Core, always installed:
 
-| Module    | What                                                                                      |
-|-----------|-------------------------------------------------------------------------------------------|
-| `cli`     | git, ripgrep, fd, fzf, lazygit, zoxide, yazi, eza, bat, jq, gh, tree-sitter, node, python  |
-| `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, `y` (yazi), starship prompt |
-| `tmux`    | `Ctrl-a` prefix, vim-aware pane moves, popups for lazygit and a project picker            |
+| Module    | What                                                                                                                                                                                                       |
+| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `cli`     | git, ripgrep, fd, fzf, lazygit, zoxide, yazi, eza, bat, jq, gh, tree-sitter, node, python                                                                                                                  |
+| `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, `y` (yazi), starship prompt                                                                         |
+| `tmux`    | `Ctrl-a` prefix, vim-aware pane moves, popups for lazygit and a project picker                                                                                                                             |
 | `nvim`    | Neovim + LazyVim with debugging (DAP), testing (neotest), JSON/YAML/TOML/Markdown/git, harpoon, surround, inc-rename. Mason's tools (e.g. golangci-lint) are also on the shell PATH, after everything else |
-| `wezterm` | WezTerm + JetBrainsMono Nerd Font (Homebrew cask on macOS, winget on Windows), Tokyo Night, opens straight into tmux |
+| `wezterm` | WezTerm + JetBrainsMono Nerd Font (Homebrew cask on macOS, winget on Windows), Tokyo Night, opens straight into tmux                                                                                       |
 
 Languages and tools (name a module or any of its aliases, e.g. `ts`, `.tsx`, `kubernetes`):
 
-| Module       | Toolchain from Homebrew                 | In Neovim (LSP, lint/format, debug, test)                       |
-|--------------|-----------------------------------------|-----------------------------------------------------------------|
-| `go`         | go                                      | gopls, golangci-lint, gofumpt/goimports, delve, neotest-golang  |
-| `typescript` | node, pnpm                              | vtsls, eslint, prettier, js-debug-adapter, jest + vitest         |
-| `python`     | python 3.13, uv                         | pyright, ruff, debugpy, pytest                                  |
-| `rust`       | rustup (stable + rust-analyzer, clippy) | rustaceanvim, clippy, codelldb, crates.nvim                     |
-| `docker`     | docker CLI, compose, buildx, lazydocker; Colima on macOS | dockerls, compose LSP, hadolint                  |
-| `k8s`        | kubectl, helm, k9s, kubectx, stern      | helm-ls, Kubernetes schemas for manifests                       |
-| `terraform`  | terraform                               | terraform-ls, tflint                                            |
-| `java`       | OpenJDK 21, maven, gradle               | jdtls, java-debug, java-test                                    |
-| `cpp`        | cmake                                   | clangd, clang-format, codelldb, cmake tools                     |
-| `bash`       | shellcheck, shfmt                       | bash-language-server, shellcheck, shfmt                         |
-| `sql`        |                                         | vim-dadbod UI + completion, sqlfluff                            |
+| Module       | Toolchain from Homebrew                                  | In Neovim (LSP, lint/format, debug, test)                      |
+| ------------ | -------------------------------------------------------- | -------------------------------------------------------------- |
+| `go`         | go                                                       | gopls, golangci-lint, gofumpt/goimports, delve, neotest-golang |
+| `typescript` | node, pnpm                                               | vtsls, eslint, prettier, js-debug-adapter, jest + vitest       |
+| `python`     | python 3.13, uv                                          | pyright, ruff, debugpy, pytest                                 |
+| `rust`       | rustup (stable + rust-analyzer, clippy)                  | rustaceanvim, clippy, codelldb, crates.nvim                    |
+| `docker`     | docker CLI, compose, buildx, lazydocker; Colima on macOS | dockerls, compose LSP, hadolint                                |
+| `k8s`        | kubectl, helm, k9s, kubectx, stern                       | helm-ls, Kubernetes schemas for manifests                      |
+| `terraform`  | terraform                                                | terraform-ls, tflint                                           |
+| `java`       | OpenJDK 21, maven, gradle                                | jdtls, java-debug, java-test                                   |
+| `cpp`        | cmake                                                    | clangd, clang-format, codelldb, cmake tools                    |
+| `bash`       | shellcheck, shfmt                                        | bash-language-server, shellcheck, shfmt                        |
+| `sql`        |                                                          | vim-dadbod UI + completion, sqlfluff                           |
 
 Optional extras:
 
-| Module   | Installs                                                        | Wiring                                                    |
-|----------|-----------------------------------------------------------------|-----------------------------------------------------------|
+| Module                                 | Installs                                                         | Wiring                                                                                                                                                                               |
+| -------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `claude` (`claude-code`, `claudecode`) | Claude Code CLI (Anthropic's installer, same on macOS/Linux/WSL) | tmux popup on `Ctrl-a C`; Neovim integration through LazyVim's `ai.claudecode` extra (claudecode.nvim): open Claude in a split, send selections, accept or reject its edits as diffs |
 
 Run `claude` once afterwards to sign in. devenv never touches your login,
@@ -124,11 +124,11 @@ settings or history (`~/.claude`, `~/.claude.json`), not even on undo.
 
 Add-ons for Claude Code (each brings in `claude`):
 
-| Module       | What                                                                 |
-|--------------|----------------------------------------------------------------------|
-| `caveman` (`cave`) | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review` |
-| `ponytail`   | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit` |
-| `lavish` (`lavish-axi`) | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`) |
+| Module                             | What                                                                                                                                                                                                     |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `caveman` (`cave`)                 | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review`                                                      |
+| `ponytail`                         | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit`                                                    |
+| `lavish` (`lavish-axi`)            | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`)                                                     |
 | `nomistakes` (`no-mistakes`, `nm`) | [no-mistakes](https://github.com/kunchenguid/no-mistakes): `git push no-mistakes` runs an AI review, tests and lint in a worktree, then opens the PR. Per repo: `no-mistakes init` / `no-mistakes eject` |
 
 Plugins load in the next `claude` session. Undo uses `claude plugin uninstall`;
@@ -141,31 +141,31 @@ is ready to use.
 
 ### Keys worth knowing
 
-| Where   | Keys                         | Does                                                   |
-|---------|------------------------------|--------------------------------------------------------|
-| tmux    | `Ctrl-a` then `\|` / `-`     | split right / down (in the current directory)          |
-| tmux    | `Ctrl-h/j/k/l`               | move between panes **and** Neovim splits               |
-| tmux    | `Ctrl-a f`                   | fuzzy-pick a project dir, jump to its own session      |
-| tmux    | `Ctrl-a g` / `Ctrl-a t`      | lazygit popup / scratch shell popup                    |
-| tmux    | `Alt-1..9`, `Ctrl-a m`       | jump to window, zoom pane                              |
-| tmux    | `Ctrl-a H/J/K/L`             | resize pane (repeatable)                               |
-| tmux    | `Ctrl-a S` / `Ctrl-a X`      | new named session / kill session                       |
-| tmux    | `Ctrl-a r`                   | reload the tmux config                                 |
-| tmux    | `Ctrl-a C`                   | Claude Code popup in the current directory (`claude` module) |
-| WezTerm | `Cmd-t`, `Cmd-1..9`, `Cmd-d`, `Cmd-Shift-d` (macOS) | tmux new window, select window, split right / down |
-| WezTerm | `Cmd-k` / `Cmd-g` (macOS)    | project picker / lazygit                               |
-| WezTerm | `Ctrl-Shift-t`               | a plain shell tab without tmux                         |
-| WezTerm | `Ctrl-Shift-f`               | toggle full screen                                     |
-| Neovim  | `Space` (wait)               | which-key menu of everything                           |
-| Neovim  | `Space t t` / `Space t r`    | run tests in file / nearest test                       |
-| Neovim  | `Space d b` / `Space d c`    | breakpoint / start or continue debugging               |
-| Neovim  | `Space c f`, `Space c a`     | format, code actions                                   |
-| Neovim  | `Space g g`                  | lazygit                                                |
-| Neovim  | `Ctrl-[` / `Ctrl-]`          | jump back / forward (replaces `Ctrl-o` / `Ctrl-i`)     |
-| Neovim  | `Ctrl-f`                     | switch project (tmux session picker)                   |
-| Neovim  | `Space a c` / `Space a s`    | toggle Claude / send selection to it (`claude` module) |
-| Neovim  | `Space a a` / `Space a d`    | accept / reject the diff Claude proposed               |
-| shell   | `Ctrl-r`, `Ctrl-t`, `z dir`  | fuzzy history, fuzzy file, jump to a frequent dir      |
+| Where   | Keys                                                | Does                                                         |
+| ------- | --------------------------------------------------- | ------------------------------------------------------------ |
+| tmux    | `Ctrl-a` then `\|` / `-`                            | split right / down (in the current directory)                |
+| tmux    | `Ctrl-h/j/k/l`                                      | move between panes **and** Neovim splits                     |
+| tmux    | `Ctrl-a f`                                          | fuzzy-pick a project dir, jump to its own session            |
+| tmux    | `Ctrl-a g` / `Ctrl-a t`                             | lazygit popup / scratch shell popup                          |
+| tmux    | `Alt-1..9`, `Ctrl-a m`                              | jump to window, zoom pane                                    |
+| tmux    | `Ctrl-a H/J/K/L`                                    | resize pane (repeatable)                                     |
+| tmux    | `Ctrl-a S` / `Ctrl-a X`                             | new named session / kill session                             |
+| tmux    | `Ctrl-a r`                                          | reload the tmux config                                       |
+| tmux    | `Ctrl-a C`                                          | Claude Code popup in the current directory (`claude` module) |
+| WezTerm | `Cmd-t`, `Cmd-1..9`, `Cmd-d`, `Cmd-Shift-d` (macOS) | tmux new window, select window, split right / down           |
+| WezTerm | `Cmd-k` / `Cmd-g` (macOS)                           | project picker / lazygit                                     |
+| WezTerm | `Ctrl-Shift-t`                                      | a plain shell tab without tmux                               |
+| WezTerm | `Ctrl-Shift-f`                                      | toggle full screen                                           |
+| Neovim  | `Space` (wait)                                      | which-key menu of everything                                 |
+| Neovim  | `Space t t` / `Space t r`                           | run tests in file / nearest test                             |
+| Neovim  | `Space d b` / `Space d c`                           | breakpoint / start or continue debugging                     |
+| Neovim  | `Space c f`, `Space c a`                            | format, code actions                                         |
+| Neovim  | `Space g g`                                         | lazygit                                                      |
+| Neovim  | `Ctrl-[` / `Ctrl-]`                                 | jump back / forward (replaces `Ctrl-o` / `Ctrl-i`)           |
+| Neovim  | `Ctrl-f`                                            | switch project (tmux session picker)                         |
+| Neovim  | `Space a c` / `Space a s`                           | toggle Claude / send selection to it (`claude` module)       |
+| Neovim  | `Space a a` / `Space a d`                           | accept / reject the diff Claude proposed                     |
+| shell   | `Ctrl-r`, `Ctrl-t`, `z dir`                         | fuzzy history, fuzzy file, jump to a frequent dir            |
 
 **Clipboard.** Yanks in Neovim and tmux (copy mode or a mouse drag) go to the
 system clipboard; `Ctrl-Shift-v` (`Cmd-v` on macOS) pastes. Hold `Shift` while
@@ -206,12 +206,12 @@ re-add it until you name it.
 devenv-written files say so in their header. Put your own changes where devenv
 never writes:
 
-| Tool    | Your file                                                   |
-|---------|-------------------------------------------------------------|
+| Tool    | Your file                                                                       |
+| ------- | ------------------------------------------------------------------------------- |
 | Neovim  | `~/.config/nvim/lua/plugins/*.lua`, `lua/config/{options,keymaps,autocmds}.lua` |
-| tmux    | `~/.config/tmux/local.conf`                                 |
-| WezTerm | `~/.config/wezterm/local.lua` (return `function(config) ... end`) |
-| shell   | `~/.config/devenv/local.sh`                                 |
+| tmux    | `~/.config/tmux/local.conf`                                                     |
+| WezTerm | `~/.config/wezterm/local.lua` (return `function(config) ... end`)               |
+| shell   | `~/.config/devenv/local.sh`                                                     |
 
 ## Adding a module
 
@@ -231,21 +231,6 @@ requires=nvim
 brew=ruby
 extras=lang.ruby
 ```
-
-## Design notes
-
-- **bash, not a compiled binary**: nothing to build or download per platform; a
-  fresh Mac already has bash 3.2, curl and tar. The code avoids bash 4 features and
-  GNU-only flags so the same script runs on macOS, Linux and WSL.
-- **Homebrew on every platform**: one set of package names, current versions (the
-  Neovim in Ubuntu's apt is too old for LazyVim), and clean per-package uninstall.
-- **Colima, not Docker Desktop, on macOS**: no licence question on a work machine.
-- **WSL on Windows**: tmux needs a Unix; WezTerm stays native for proper
-  rendering and clipboard. Neovim reaches the Windows clipboard through
-  PowerShell (`pbcopy`/`pbpaste`), not `clip.exe`, which can't take UTF-8. WezTerm
-  pastes into WSL with Unix newlines, so no stray `^M` characters.
-- **Quiet screen, full log**: numbered steps with a live progress line; full
-  output in `~/.local/state/devenv/runs/<run>.log` (`DEVENV_PLAIN=1` for plain lines).
 
 ## Repository layout
 
