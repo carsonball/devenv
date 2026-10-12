@@ -12,6 +12,11 @@ map("x", "<leader>p", [["_dP]], { desc = "Paste without yank" })
 map("v", "J", ":m '>+1<cr>gv=gv", { desc = "Move selection down", silent = true })
 map("v", "K", ":m '<-2<cr>gv=gv", { desc = "Move selection up", silent = true })
 
+-- Ctrl-/ toggles comments on a selection. Terminals usually send it as Ctrl-_.
+-- Visual only: in normal mode LazyVim uses Ctrl-/ for its terminal.
+map("x", "<C-/>", "gc", { desc = "Toggle comment", remap = true })
+map("x", "<C-_>", "gc", { desc = "Toggle comment", remap = true })
+
 map("n", "<leader>fX", "<cmd>!chmod +x %<cr>", { desc = "Make file executable", silent = true })
 
 -- Open a tmux session picker for another project without leaving Neovim.
