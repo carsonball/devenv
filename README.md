@@ -89,8 +89,8 @@ Core, always installed:
 
 | Module    | What                                                                                      |
 |-----------|-------------------------------------------------------------------------------------------|
-| `cli`     | git, ripgrep, fd, fzf, lazygit, zoxide, eza, bat, jq, gh, tree-sitter, node, python        |
-| `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, starship prompt |
+| `cli`     | git, ripgrep, fd, fzf, lazygit, zoxide, yazi, eza, bat, jq, gh, tree-sitter, node, python  |
+| `shellrc` | `~/.config/devenv/shell.sh` sourced from `.zshrc`/`.bashrc`: PATH, history, aliases, fzf keys, zoxide, `y` (yazi), starship prompt |
 | `tmux`    | `Ctrl-a` prefix, vim-aware pane moves, popups for lazygit and a project picker            |
 | `nvim`    | Neovim + LazyVim with debugging (DAP), testing (neotest), JSON/YAML/TOML/Markdown/git, harpoon, surround, inc-rename. Mason's tools (e.g. golangci-lint) are also on the shell PATH, after everything else |
 | `wezterm` | WezTerm + JetBrainsMono Nerd Font (Homebrew cask on macOS, winget on Windows), Tokyo Night, opens straight into tmux |

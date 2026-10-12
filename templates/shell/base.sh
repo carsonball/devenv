@@ -48,4 +48,13 @@ export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
 export FZF_CTRL_T_COMMAND=$FZF_DEFAULT_COMMAND
 export FZF_DEFAULT_OPTS='--height 40% --layout reverse --border --color=bg+:#283457,fg+:#c0caf5,hl:#7aa2f7,hl+:#7dcfff,pointer:#ff9e64,prompt:#7aa2f7'
 command -v zoxide >/dev/null 2>&1 && eval "$(zoxide init $__devenv_sh)"
+# `y`: yazi file manager; quitting with q leaves the shell in the last directory.
+y() {
+  local tmp cwd
+  tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+  command yazi "$@" --cwd-file="$tmp"
+  IFS= read -r -d '' cwd < "$tmp"
+  [ -n "$cwd" ] && [ "$cwd" != "$PWD" ] && builtin cd -- "$cwd"
+  rm -f -- "$tmp"
+}
 command -v starship >/dev/null 2>&1 && eval "$(starship init $__devenv_sh)"
