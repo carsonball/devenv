@@ -8,7 +8,6 @@ opt.wrap = false
 opt.swapfile = false -- undofile (on in LazyVim) is the safety net
 opt.updatetime = 200
 opt.spelllang = { "en" }
-opt.colorcolumn = "100"
 opt.exrc = true -- trust-prompted per-project .nvim.lua
 
 -- Spell-check prose filetypes only.
