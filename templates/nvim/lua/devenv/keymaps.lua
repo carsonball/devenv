@@ -35,5 +35,5 @@ map("n", "<C-]>", "<C-i>", { desc = "Jump forward" })
 map("n", "<C-o>", "<Nop>")
 map("n", "<C-i>", "<Nop>")
 
--- Ctrl-w closes the buffer, like a browser tab. Window commands stay on Space w.
-map("n", "<C-w>", function() Snacks.bufdelete() end, { desc = "Delete buffer" })
+-- Shift-w closes the buffer, replacing the WORD motion.
+map("n", "W", function() Snacks.bufdelete() end, { desc = "Delete buffer" })
