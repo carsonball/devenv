@@ -161,6 +161,7 @@ is ready to use.
 | Neovim  | `Space d b` / `Space d c`                           | breakpoint / start or continue debugging                     |
 | Neovim  | `Space c f`, `Space c a`                            | format, code actions                                         |
 | Neovim  | `Space g g`                                         | lazygit                                                      |
+| Neovim  | `Shift-h` / `Shift-l`                               | previous / next open file (buffer)                           |
 | Neovim  | `Ctrl-[` / `Ctrl-]`                                 | jump back / forward (replaces `Ctrl-o` / `Ctrl-i`)           |
 | Neovim  | `Ctrl-f`                                            | switch project (tmux session picker)                         |
 | Neovim  | `Space a c` / `Space a s`                           | toggle Claude / send selection to it (`claude` module)       |

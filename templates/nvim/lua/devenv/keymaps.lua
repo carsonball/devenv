@@ -17,6 +17,10 @@ map("v", "K", ":m '<-2<cr>gv=gv", { desc = "Move selection up", silent = true })
 map("x", "<C-/>", "gc", { desc = "Toggle comment", remap = true })
 map("x", "<C-_>", "gc", { desc = "Toggle comment", remap = true })
 
+-- Shift + mouse wheel scrolls sideways: wheel up goes right.
+map({ "n", "v", "i" }, "<S-ScrollWheelUp>", "<ScrollWheelRight>", { desc = "Scroll right" })
+map({ "n", "v", "i" }, "<S-ScrollWheelDown>", "<ScrollWheelLeft>", { desc = "Scroll left" })
+
 map("n", "<leader>fX", "<cmd>!chmod +x %<cr>", { desc = "Make file executable", silent = true })
 
 -- Open a tmux session picker for another project without leaving Neovim.
