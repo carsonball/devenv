@@ -235,6 +235,15 @@ t_wsl() {
   check "linux home restored" [ "$(snapshot)" = "$before" ]
 }
 
+t_wsl_ignores_windows_commands() {
+  setup wsl_wincmd wsl
+  mkdir -p "$T/win/bin"; printf '#!/bin/sh\necho stub\n' >"$T/win/bin/docker"; chmod +x "$T/win/bin/docker"
+  EXTRA="DEVENV_WIN_MOUNT=$T/win PATH=$T/fakes:/usr/bin:/bin:$T/win/bin" dev install docker -y --no-sync
+  check "windows docker stub not used" sh -c "! printf '%s' \"\$0\" | grep -q 'using your existing docker'" "$OUT"
+  check "brew docker installed" installed docker
+  check "docker desktop steps shown" has_out "WSL integration, turn on this distro"
+}
+
 t_progress_line() {
   CURRENT=progress
   # The live line drawn on terminals: a bar for "<done> <total> <unit>", text otherwise.

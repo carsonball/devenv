@@ -94,6 +94,13 @@ ensure_homebrew() {
   BREW_READY=1
 }
 
+# Path of <cmd> on PATH. On WSL, Windows programs under /mnt (e.g. Docker
+# Desktop's stub that only prints "could not be found in this WSL 2 distro") don't count.
+native_cmd() {
+  if [ "$IS_WSL" = 1 ]; then type -aP "$1" 2>/dev/null | grep -v "^$WIN_MOUNT/" | head -n 1 | grep .
+  else command -v "$1" 2>/dev/null; fi
+}
+
 # brew_install <module> <spec...>
 # spec is "formula" or "formula:command"; with a command, an existing install
 # of that command from anywhere (nvm, apt, ...) is used instead of brew's.
@@ -103,7 +110,7 @@ brew_install() {
     name=${spec%%:*}; cmd=''
     case "$spec" in *:*) cmd=${spec#*:} ;; esac
     if brew_has "${name##*/}"; then continue; fi
-    if [ -n "$cmd" ] && found=$(command -v "$cmd" 2>/dev/null); then
+    if [ -n "$cmd" ] && found=$(native_cmd "$cmd"); then
       if too_old "$cmd"; then
         step "your $cmd ($found, $("$cmd" --version 2>/dev/null | head -n 1)) is too old; adding Homebrew's"
       else

@@ -215,6 +215,7 @@ detect_platform() {
   if [ "$OS" = linux ] && [ -z "${DEVENV_WSL:-}" ] && grep -qi microsoft /proc/sys/kernel/osrelease 2>/dev/null; then
     IS_WSL=1
   fi
+  WIN_MOUNT=${DEVENV_WIN_MOUNT:-/mnt}
   if [ -n "${DEVENV_BREW_PREFIX:-}" ]; then
     BREW_PREFIX=$DEVENV_BREW_PREFIX
   elif [ "$OS" = darwin ]; then
@@ -233,7 +234,7 @@ detect_platform() {
   fi
   PLATFORM_LABEL=$OS
   [ "$IS_WSL" = 1 ] && PLATFORM_LABEL="wsl (${WSL_DISTRO_NAME:-linux})"
-  export OS ARCH IS_WSL BREW_PREFIX BREW USER_SHELL RC_FILE PLATFORM_LABEL
+  export OS ARCH IS_WSL WIN_MOUNT BREW_PREFIX BREW USER_SHELL RC_FILE PLATFORM_LABEL
 }
 
 # Windows home as seen from WSL, e.g. /mnt/c/Users/carso.
