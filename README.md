@@ -162,6 +162,7 @@ is ready to use.
 | Neovim  | `Space c f`, `Space c a`                            | format, code actions                                         |
 | Neovim  | `Space g g`                                         | lazygit                                                      |
 | Neovim  | `Shift-h` / `Shift-l`                               | previous / next open file (buffer)                           |
+| Neovim  | `Ctrl-w`                                            | close the current buffer (window commands move to `Space w`) |
 | Neovim  | `Ctrl-[` / `Ctrl-]`                                 | jump back / forward (replaces `Ctrl-o` / `Ctrl-i`)           |
 | Neovim  | `Ctrl-f`                                            | switch project (tmux session picker)                         |
 | Neovim  | `Space a c` / `Space a s`                           | toggle Claude / send selection to it (`claude` module)       |
