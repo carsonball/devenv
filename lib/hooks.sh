@@ -116,6 +116,7 @@ claude_plugin() {
 
 hook_caveman()  { claude_plugin caveman caveman@caveman JuliusBrussee/caveman; }
 hook_ponytail() { claude_plugin ponytail ponytail@ponytail DietrichGebert/ponytail; }
+hook_gopls()    { claude_plugin gopls gopls-lsp@claude-plugins-official anthropics/claude-plugins-official; }
 
 # Lavish's skill is a stub that runs `npx -y lavish-axi`, so the CLI itself is
 # fetched on demand (node comes with the cli module). A copy of the skill ships

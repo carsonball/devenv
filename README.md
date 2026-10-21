@@ -128,6 +128,7 @@ Add-ons for Claude Code (each brings in `claude`):
 | ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `caveman` (`cave`)                 | [caveman](https://github.com/JuliusBrussee/caveman): terse answers (`/caveman`, `/ultracave`, `/caveman off`), `/caveman-commit`, `/caveman-review`                                                      |
 | `ponytail`                         | [ponytail](https://github.com/DietrichGebert/ponytail): minimal-code mode (`/ponytail lite\|full\|ultra\|off`), `/ponytail-review`, `/ponytail-audit`                                                    |
+| `gopls` (`gopls-lsp`)             | [gopls-lsp](https://github.com/anthropics/claude-plugins-official): Go code intelligence for Claude (definitions, references, diagnostics) through gopls; brings in `go` |
 | `lavish` (`lavish-axi`)            | [lavish-axi](https://github.com/kunchenguid/lavish-axi): review agent-written HTML (plans, diagrams) in your browser and send notes back (`/lavish`)                                                     |
 | `nomistakes` (`no-mistakes`, `nm`) | [no-mistakes](https://github.com/kunchenguid/no-mistakes): `git push no-mistakes` runs an AI review, tests and lint in a worktree, then opens the PR. Per repo: `no-mistakes init` / `no-mistakes eject` |
 
@@ -143,6 +144,7 @@ is ready to use.
 
 | Where   | Keys                                                | Does                                                         |
 | ------- | --------------------------------------------------- | ------------------------------------------------------------ |
+| tmux    | `Ctrl-a c`                                          | new window (in the current directory)                        |
 | tmux    | `Ctrl-a` then `\|` / `-`                            | split right / down (in the current directory)                |
 | tmux    | `Ctrl-h/j/k/l`                                      | move between panes **and** Neovim splits                     |
 | tmux    | `Ctrl-a f`                                          | fuzzy-pick a project dir, jump to its own session            |

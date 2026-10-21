@@ -290,11 +290,12 @@ t_claude_existing() {
 t_claude_addons() {
   setup addons darwin
   local before; before=$(snapshot)
-  dev install caveman ponytail lavish no-mistakes -y --no-sync
+  dev install caveman ponytail gopls lavish no-mistakes -y --no-sync
   check "add-ons install succeeds" [ "$RC" = 0 ]
   check "claude installed first" sh -c "awk -F'\t' '\$4 == \"claude\" { c = NR } \$5 == \"plugin\" && !p { p = NR } END { exit !(c && p && c < p) }' '$T/home/.local/state/devenv/manifest.tsv'"
   check "caveman plugin installed" grep -qx caveman@caveman "$T/home/.claude/fake/plugins"
   check "ponytail plugin installed" grep -qx ponytail@ponytail "$T/home/.claude/fake/plugins"
+  check "gopls plugin installed" grep -qx gopls-lsp@claude-plugins-official "$T/home/.claude/fake/plugins"
   check "marketplaces added" sh -c "grep -qx caveman '$T/home/.claude/fake/markets' && grep -qx ponytail '$T/home/.claude/fake/markets'"
   check "lavish skill written" grep -q 'name: lavish' "$T/home/.claude/skills/lavish/SKILL.md"
   check "no-mistakes linked" [ -L "$T/home/.local/bin/no-mistakes" ]
