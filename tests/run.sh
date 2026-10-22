@@ -238,7 +238,9 @@ t_wsl() {
 t_wsl_ignores_windows_commands() {
   setup wsl_wincmd wsl
   mkdir -p "$T/win/bin"; printf '#!/bin/sh\necho stub\n' >"$T/win/bin/docker"; chmod +x "$T/win/bin/docker"
-  EXTRA="DEVENV_WIN_MOUNT=$T/win PATH=$T/fakes:/usr/bin:/bin:$T/win/bin" dev install docker -y --no-sync
+  # System bins minus docker: a host with Docker Desktop's WSL integration has a real /usr/bin/docker.
+  mkdir -p "$T/sysbin"; for f in /usr/bin/* /bin/*; do [ "${f##*/}" = docker ] || ln -sf "$f" "$T/sysbin/"; done
+  EXTRA="DEVENV_WIN_MOUNT=$T/win PATH=$T/fakes:$T/sysbin:$T/win/bin" dev install docker -y --no-sync
   check "windows docker stub not used" sh -c "! printf '%s' \"\$0\" | grep -q 'using your existing docker'" "$OUT"
   check "brew docker installed" installed docker
   check "docker desktop steps shown" has_out "WSL integration, turn on this distro"
