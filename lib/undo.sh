@@ -46,8 +46,7 @@ undo_record() {
       if [ -e "$target" ] || [ -L "$target" ]; then
         cur=$(sha_of "$target")
         if [ -n "$sha" ] && [ "$cur" != "$sha" ]; then
-          b=$(stash "$target")
-          warn "you had edited $target; your version is saved at $b"
+          stash "$target" && warn "you had edited $target; your version is saved at $STASHED"
         else
           rm -f "$target"
         fi
@@ -58,8 +57,7 @@ undo_record() {
         if [ -d "$target" ] || { [ -n "$sha" ] && [ "$cur" = "$sha" ]; }; then
           safe_path "$target" && rm -rf "$target"
         else
-          b=$(stash "$target")
-          warn "you had edited $target; your version is saved at $b"
+          stash "$target" && warn "you had edited $target; your version is saved at $STASHED"
         fi
       fi
       if [ -e "$data" ] || [ -L "$data" ]; then

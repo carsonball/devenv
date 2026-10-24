@@ -49,9 +49,9 @@ displace() {
   [ -e "$path" ] || [ -L "$path" ] || return 0
   [ -n "$(find_record replace "$path")" ] && return 0
   if is_dry; then step "would move $(tilde "$path") aside (it belongs to the replaced config)"; return 0; fi
-  b=$(stash "$path")
-  record "$module" replace "$path" "$b"
-  warn "moved $(tilde "$path") to $(tilde "$b") (it would override devenv's config)"
+  stash "$path" || return 0
+  record "$module" replace "$path" "$STASHED"
+  warn "moved $(tilde "$path") to $(tilde "$STASHED") (it would override devenv's config)"
 }
 
 render_nvim() {

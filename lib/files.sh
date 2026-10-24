@@ -9,14 +9,14 @@ backup_path() {
   esac
 }
 
-# Move whatever sits at <path> into the backup area and print where it went.
+# Move whatever sits at <path> into the backup area; STASHED says where it went.
+# Called directly, not in $(...), so a --step answer of q reaches the whole run.
 stash() {
-  local path=$1 dest
-  dest=$(backup_path "$path")
-  if [ -e "$dest" ] || [ -L "$dest" ]; then dest="$dest.$$.$(date +%s)"; fi
-  mkdir -p "$(dirname "$dest")"
-  mv "$path" "$dest"
-  printf '%s\n' "$dest"
+  local path=$1
+  STASHED=$(backup_path "$path")
+  if [ -e "$STASHED" ] || [ -L "$STASHED" ]; then STASHED="$STASHED.$$.$(date +%s)"; fi
+  mkdir -p "$(dirname "$STASHED")"
+  mv "$path" "$STASHED"
 }
 
 # ensure_dir <module> <dir>: create missing ancestors, recording each one.
@@ -31,7 +31,8 @@ ensure_dir() {
   [ -n "$missing" ] || return 0
   if is_dry; then return 0; fi
   for d in $missing; do
-    mkdir "$d" && record "$module" mkdir "$d"
+    mkdir "$d" || return 1
+    record "$module" mkdir "$d"
   done
 }
 
@@ -42,14 +43,14 @@ adopt_dir() {
   if [ -n "$(find_record dir "$dir")" ]; then return 0; fi
   if [ -e "$dir" ] || [ -L "$dir" ]; then
     if is_dry; then step "would back up existing $(tilde "$dir") and replace it"; DRY_ADOPTED="$dir"; return 0; fi
-    b=$(stash "$dir")
-    record "$module" replace "$dir" "$b"
-    warn "moved your existing $(tilde "$dir") to $(tilde "$b")"
+    stash "$dir" || return 0
+    record "$module" replace "$dir" "$STASHED"
+    warn "moved your existing $(tilde "$dir") to $(tilde "$STASHED")"
   elif is_dry; then
     step "would create $dir"; return 0
   fi
-  ensure_dir "$module" "$(dirname "$dir")"
-  mkdir -p "$dir"
+  ensure_dir "$module" "$(dirname "$dir")" || return 0
+  mkdir -p "$dir" || return 0
   record "$module" dir "$dir"
 }
 
@@ -68,7 +69,7 @@ track_new_dir() {
 # Writes a devenv-owned file. If you have edited a file devenv wrote earlier,
 # your version is left alone unless --force is given (then it is backed up).
 install_file() {
-  local module=$1 src=$2 dest=$3 mode=${4:-} rec kind cur sha b
+  local module=$1 src=$2 dest=$3 mode=${4:-} rec kind cur sha
   sha=$(sha_of "$src")
   # Dry run inside a directory that would have been moved aside: the file is new.
   if is_dry && [ -n "${DRY_ADOPTED:-}" ]; then
@@ -87,13 +88,13 @@ install_file() {
         return 0
       fi
       if is_dry; then step "would back up your edited $dest and rewrite it"; return 0; fi
-      b=$(stash "$dest")
-      history_add "backup of edited $dest -> $b"
-      warn "your edited $dest was saved to $b"
+      stash "$dest" || return 0
+      history_add "backup of edited $dest -> $STASHED"
+      warn "your edited $dest was saved to $STASHED"
     fi
     if is_dry; then step "would update $(tilde "$dest")"; return 0; fi
-    ensure_dir "$module" "$(dirname "$dest")"
-    cp "$src" "$dest"
+    ensure_dir "$module" "$(dirname "$dest")" || return 0
+    cp "$src" "$dest" || return 0
     [ -n "$mode" ] && chmod "$mode" "$dest"
     record_set "$(field "$rec" 1)" 8 "$sha"
     history_add "update $dest (#$(field "$rec" 1), $kind)"
@@ -103,15 +104,16 @@ install_file() {
 
   if [ -e "$dest" ] || [ -L "$dest" ]; then
     if is_dry; then step "would back up existing $(tilde "$dest") and replace it"; return 0; fi
-    b=$(stash "$dest")
-    cp "$src" "$dest"
+    stash "$dest" || return 0
+    # Recorded before the copy: if that is skipped, undo still restores the original.
+    record "$module" replace "$dest" "$STASHED" "$sha"
+    cp "$src" "$dest" || return 0
     [ -n "$mode" ] && chmod "$mode" "$dest"
-    record "$module" replace "$dest" "$b" "$sha"
-    ok "replaced $(tilde "$dest") (original saved to $(tilde "$b"))"
+    ok "replaced $(tilde "$dest") (original saved to $(tilde "$STASHED"))"
   else
     if is_dry; then step "would create $(tilde "$dest")"; return 0; fi
-    ensure_dir "$module" "$(dirname "$dest")"
-    cp "$src" "$dest"
+    ensure_dir "$module" "$(dirname "$dest")" || return 0
+    cp "$src" "$dest" || return 0
     [ -n "$mode" ] && chmod "$mode" "$dest"
     record "$module" file "$dest" '' "$sha"
     ok "created $(tilde "$dest")"
@@ -132,8 +134,8 @@ link_file() {
   local module=$1 target=$2 link=$3
   if [ -e "$link" ] || [ -L "$link" ]; then return 0; fi
   if is_dry; then step "would link $link -> $target"; return 0; fi
-  ensure_dir "$module" "$(dirname "$link")"
-  ln -s "$target" "$link"
+  ensure_dir "$module" "$(dirname "$link")" || return 0
+  ln -s "$target" "$link" || return 0
   record "$module" link "$link" "$target"
   ok "linked $(tilde "$link")"
 }
@@ -144,27 +146,36 @@ BLOCK_END='# <<< devenv <<<'
 # put_block <module> <file> <content>: add or refresh a marked block at the end
 # of a file you own (e.g. ~/.zshrc). Nothing outside the markers is touched.
 put_block() {
-  local module=$1 file=$2 content=$3 tmp created=''
-  if [ -f "$file" ] && grep -qF "$BLOCK_BEGIN" "$file"; then
-    tmp=$(mktemp)
+  local module=$1 file=$2 content=$3 tmp created='' had=''
+  [ -f "$file" ] && grep -qF "$BLOCK_BEGIN" "$file" && had=1
+  # The new file is built aside and copied over, so --step shows one plain cp.
+  tmp=$(scratch)
+  if [ -n "$had" ]; then
     strip_block "$file" >"$tmp"
-    printf '\n%s\n%s\n%s\n' "$BLOCK_BEGIN" "$content" "$BLOCK_END" >>"$tmp"
-    if cmp -s "$tmp" "$file"; then rm -f "$tmp"; return 0; fi
-    if is_dry; then rm -f "$tmp"; step "would refresh the devenv block in $file"; return 0; fi
-    cat "$tmp" >"$file"; rm -f "$tmp"
+  elif [ -f "$file" ]; then
+    cat "$file" >"$tmp"
+    # Files without a final newline get one; remembered so undo can take it away.
+    if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then printf '\n' >>"$tmp"; created='nl'; fi
+  else
+    created=created
+  fi
+  printf '\n%s\n%s\n%s\n' "$BLOCK_BEGIN" "$content" "$BLOCK_END" >>"$tmp"
+  if cmp -s "$tmp" "$file"; then rm -f "$tmp"; return 0; fi
+  if is_dry; then
+    rm -f "$tmp"
+    if [ -n "$had" ]; then step "would refresh the devenv block in $file"; else step "would add a devenv block to $file"; fi
+    return 0
+  fi
+  if ! ensure_dir "$module" "$(dirname "$file")" || ! cp "$tmp" "$file"; then rm -f "$tmp"; return 0; fi
+  rm -f "$tmp"
+  if [ -n "$had" ]; then
     history_add "refresh block in $file"
     ok "refreshed the devenv block in $(tilde "$file")"
     [ -n "$(find_record block "$file")" ] || record "$module" block "$file" ''
-    return 0
+  else
+    record "$module" block "$file" "$created"
+    ok "added a devenv block to $(tilde "$file")"
   fi
-  if is_dry; then step "would add a devenv block to $file"; return 0; fi
-  [ -f "$file" ] || created=created
-  ensure_dir "$module" "$(dirname "$file")"
-  # Files without a final newline get one; remembered so undo can take it away.
-  if [ -s "$file" ] && [ -n "$(tail -c 1 "$file")" ]; then printf '\n' >>"$file"; created='nl'; fi
-  printf '\n%s\n%s\n%s\n' "$BLOCK_BEGIN" "$content" "$BLOCK_END" >>"$file"
-  record "$module" block "$file" "$created"
-  ok "added a devenv block to $(tilde "$file")"
 }
 
 # Print <file> without the devenv block (and the blank line we put before it).

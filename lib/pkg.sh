@@ -105,7 +105,7 @@ native_cmd() {
 # spec is "formula" or "formula:command"; with a command, an existing install
 # of that command from anywhere (nvm, apt, ...) is used instead of brew's.
 brew_install() {
-  local module=$1 spec name cmd todo='' found; shift
+  local module=$1 spec name cmd todo='' found skipped=''; shift
   for spec in "$@"; do
     name=${spec%%:*}; cmd=''
     case "$spec" in *:*) cmd=${spec#*:} ;; esac
@@ -131,18 +131,21 @@ brew_install() {
   local label="Installing packages" probe
   probe="probe_present '$BREW_PREFIX/opt' packages $(brew_short $todo)"
   case "${todo# }" in *" "*) ;; *) label="Installing ${todo# }" probe='' ;; esac
-  if ! prun "$label" "$probe" "$BREW" install $todo; then
+  # --step asks about each formula on its own.
+  if [ "${STEP:-0}" = 1 ] || ! prun "$label" "$probe" "$BREW" install $todo; then
     # One bad formula fails the whole batch; retry the rest one at a time.
     brew_refresh
     for name in $todo; do
-      brew_has "${name##*/}" || prun "Installing $name" '' "$BREW" install "$name" || warn "brew could not install $name; see $RUN_LOG"
+      brew_has "${name##*/}" || prun "Installing $name" '' "$BREW" install "$name" || {
+        if [ "${STEP_SKIPPED:-0}" = 1 ]; then skipped="$skipped ${name##*/}"; else warn "brew could not install $name; see $RUN_LOG"; fi
+      }
     done
   fi
   brew_refresh
   for name in $todo; do
     name=${name##*/}
     if brew_has "$name"; then record "$module" brew "$name"; ok "$name"
-    else warn "$name did not install"; FAILURES="$FAILURES brew:$name"
+    elif ! word_in "$name" "$skipped"; then warn "$name did not install"; FAILURES="$FAILURES brew:$name"
     fi
   done
 }
@@ -165,7 +168,10 @@ cask_install() {
     return 0
   fi
   # shellcheck disable=SC2086
-  prun "Installing apps" "probe_present '$BREW_PREFIX/Caskroom' apps $todo" "$BREW" install --cask $todo || warn "brew reported errors; see $RUN_LOG"
+  if ! prun "Installing apps" "probe_present '$BREW_PREFIX/Caskroom' apps $todo" "$BREW" install --cask $todo; then
+    [ "${STEP_SKIPPED:-0}" = 1 ] && return 0
+    warn "brew reported errors; see $RUN_LOG"
+  fi
   brew_refresh
   for name in $todo; do
     if brew_has_cask "$name"; then record "$module" cask "$name"; ok "$name"

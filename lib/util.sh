@@ -35,9 +35,49 @@ confirm() {
   case "$reply" in y|Y|yes|YES) return 0 ;; *) return 1 ;; esac
 }
 
+# --step: ask before each change. y does it, n skips it (returns 1), q skips
+# it and everything after, so the run still records what it did.
+# Answers come from fd 9, which main opens on the terminal.
+ask_step() {
+  [ "${STEP:-0}" = 1 ] || return 0
+  is_dry && return 0
+  local reply=''
+  STEP_SKIPPED=1
+  [ "${STEP_QUIT:-0}" = 1 ] && return 1
+  STEP_SKIPPED=0
+  printf '  %s?%s %s [y/n/q] ' "$C_YELLOW" "$C_RESET" "$1" >&2
+  read -r reply <&9 || reply=q
+  case "$reply" in
+    y|Y|yes|YES) return 0 ;;
+    q|Q) STEP_QUIT=1 STEP_SKIPPED=1; log "  skipping the rest"; return 1 ;;
+    *) STEP_SKIPPED=1; log "  ${C_DIM}skipped: $1${C_RESET}"; return 1 ;;
+  esac
+}
+
+# A command line as you would type it: each argument quoted only if it needs to be.
+shell_quote() { local q; q=$(printf '%q ' "$@"); printf '%s' "${q% }"; }
+
+# --step: shadow the commands devenv changes files with, so each asks first
+# and shows exactly what will run. devenv's own temp and state files pass through.
+step_intercept() {
+  local c
+  for c in mv cp ln mkdir chmod rm; do eval "$c() { step_cmd $c \"\$@\"; }"; done
+}
+step_cmd() {
+  local c=$1 a hit=''; shift
+  # cp and ln change only their last argument; mv, rm, mkdir and chmod all of them.
+  for a in "$@"; do
+    case "$c" in cp|ln) hit='' ;; esac
+    case "$a" in -*|"${TMPDIR:-/tmp}"/devenv[.-]*|"$STATE_DIR"/*) ;; *) hit=1 ;; esac
+  done
+  if [ -n "$hit" ]; then ask_step "\$ $(shell_quote "$c" "$@")" || return 1; fi
+  command "$c" "$@"
+}
+
 # Run a command, or describe it in dry-run mode. Output goes to the run log.
 run() {
   if is_dry; then step "${C_DIM}would run:${C_RESET} $*"; return 0; fi
+  ask_step "\$ $(shell_quote "$@")" || return 1
   # On a terminal the command line only goes to the log, to keep the screen calm.
   if [ "$UI_TTY" = 1 ] && [ -n "${RUN_LOG:-}" ]; then printf '  - $ %s\n' "$*" >>"$RUN_LOG"
   else step "${C_DIM}\$ $*${C_RESET}"
@@ -136,6 +176,7 @@ progress_abort() {
 prun() {
   local label=$1 probe=${2:-probe_last} pid start=$SECONDS tick=0 note='' rc cols; shift 2
   if is_dry || [ "$UI_TTY" != 1 ] || [ -z "${RUN_LOG:-}" ]; then run "$@"; return; fi
+  ask_step "\$ $(shell_quote "$@")" || return 1
   printf '  - $ %s\n' "$*" >>"$RUN_LOG"
   local from; from=$(wc -c <"$RUN_LOG")
   cols=$(tput cols 2>/dev/null || echo 80)

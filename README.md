@@ -77,6 +77,7 @@ Options:
 
 - `-y` skips the confirmation.
 - `-n`/`--dry-run` changes nothing.
+- `-s`/`--step` asks before each command and file change: `y` does it, `n` skips it, `q` skips it and the rest. Skipped steps are not recorded, and the next `devenv install` offers them again.
 - `-f`/`--force` overwrites devenv-written configs you edited, after backing up your copy.
 - `--no-sync` skips Neovim plugins and language tools (`install`, `outdated`, `update`).
 - `--include-homebrew` (with `undo --all`) removes Homebrew too.

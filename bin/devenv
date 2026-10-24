@@ -55,6 +55,7 @@ Usage:
 Options:
   -y, --yes             don't ask for confirmation
   -n, --dry-run         show what would happen, change nothing
+  -s, --step            ask before each command and file change (y: do it, n: skip, q: skip the rest)
   -f, --force           overwrite devenv-written configs even if you edited them (yours are backed up)
       --no-sync         skip Neovim plugins and language servers (install, outdated, update)
       --include-homebrew  with undo --all: also remove Homebrew if devenv installed it
@@ -401,12 +402,13 @@ main() {
   detect_platform
   set --  "$@"
   local rest=''
-  ASSUME_YES=0 DRY_RUN=0 FORCE=0 NO_SYNC=0 INCLUDE_HOMEBREW=0
+  ASSUME_YES=0 DRY_RUN=0 FORCE=0 NO_SYNC=0 INCLUDE_HOMEBREW=0 STEP=0
   local a
   for a in "$@"; do
     case "$a" in
       -y|--yes) ASSUME_YES=1 ;;
       -n|--dry-run) DRY_RUN=1 ;;
+      -s|--step) STEP=1 ;;
       -f|--force) FORCE=1 ;;
       --no-sync) NO_SYNC=1 ;;
       --include-homebrew) INCLUDE_HOMEBREW=1 ;;
@@ -415,7 +417,14 @@ main() {
 $a" ;;
     esac
   done
-  export ASSUME_YES DRY_RUN FORCE NO_SYNC INCLUDE_HOMEBREW
+  export ASSUME_YES DRY_RUN FORCE NO_SYNC INCLUDE_HOMEBREW STEP
+  # --step answers come from the terminal; DEVENV_STEP_INPUT lets tests feed them.
+  if [ "$STEP" = 1 ]; then
+    local tty=${DEVENV_STEP_INPUT:-/dev/tty}
+    (exec <"$tty") 2>/dev/null || die "--step needs a terminal to ask on"
+    exec 9<"$tty"
+    step_intercept
+  fi
   # Rebuild "$@" from the non-flag args (newline separated; args never contain newlines).
   local IFS='
 '

@@ -213,6 +213,39 @@ t_dry_run_changes_nothing() {
   check "no brew calls that install" sh -c "! grep -q 'install' '$T/brew/fakedb/calls' 2>/dev/null"
 }
 
+t_step_mode() {
+  setup step darwin
+  local before n; before=$(snapshot)
+  mkdir -p "$T/tmp"; EXTRA="TMPDIR=$T/tmp"   # the sandbox $HOME is itself under /tmp
+  yes n | head -n 500 >"$T/answers"
+  EXTRA="TMPDIR=$T/tmp DEVENV_STEP_INPUT=$T/answers" dev install go -y --step --no-sync
+  check "step: skipping everything succeeds" [ "$RC" = 0 ]
+  check "step: asks about each formula" has_out "brew install go [y/n/q]"
+  check "step: shows the real mkdir" has_out "? \$ mkdir $T/home/.config [y/n/q]"
+  check "step: shows the real cp" has_out "/tmp/devenv."
+  check "step: rc block is a cp" has_out " $T/home/.zshrc [y/n/q]"
+  check "step: temp files pass through" sh -c "! printf '%s' \"\$1\" | grep -q 'rm -f'" _ "$OUT"
+  check "step: skips are not failures" sh -c "! printf '%s' \"\$1\" | grep -q 'did not'" _ "$OUT"
+  check "step: skipped changes nothing" [ "$(snapshot)" = "$before" ]
+  check "step: no brew installs" sh -c "! grep -q 'install' '$T/brew/fakedb/calls' 2>/dev/null"
+  check "step: nothing recorded" sh -c "! grep -q . '$T/home/.local/state/devenv/manifest.tsv' 2>/dev/null"
+  printf 'y\nq\n' >"$T/answers"
+  EXTRA="TMPDIR=$T/tmp DEVENV_STEP_INPUT=$T/answers" dev install go -y --step --no-sync
+  check "step: q finishes the run" [ "$RC" = 0 ]
+  check "step: q skips the rest" has_out "skipping the rest"
+  check "step: yes ran that step only" [ "$(grep -c 'install' "$T/brew/fakedb/calls")" = 1 ]
+  check "step: what ran is recorded" [ "$(records)" = 1 ]
+  EXTRA="DEVENV_STEP_INPUT=$T/nope" dev install go -y --step
+  check "step: needs a terminal" has_out "--step needs a terminal"
+  # Yes to everything does what a plain install does.
+  yes y | head -n 500 >"$T/answers"
+  EXTRA="TMPDIR=$T/tmp DEVENV_STEP_INPUT=$T/answers" dev install go -y --step --no-sync
+  n=$(records)
+  dev undo --all -y
+  dev install go -y --no-sync
+  check "step: yes to all matches a plain install" [ "$n" = "$(records)" ]
+}
+
 t_wsl() {
   setup wsl wsl
   echo '# ubuntu bashrc' >"$T/home/.bashrc"
